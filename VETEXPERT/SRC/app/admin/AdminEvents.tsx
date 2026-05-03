@@ -25,6 +25,9 @@ export default function AdminEvents() {
   const [startsLocal, setStartsLocal] = useState("");
   const [endsLocal, setEndsLocal] = useState("");
   const [location, setLocation] = useState("");
+  const [organizers, setOrganizers] = useState("");
+  const [audience, setAudience] = useState("");
+  const [eventFormat, setEventFormat] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
@@ -267,6 +270,37 @@ export default function AdminEvents() {
               onChange={(e) => setUrl(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               maxLength={2000}
+            />
+          </label>
+          <label className="block space-y-1 sm:col-span-2">
+            <span className="text-sm font-medium text-slate-800">Организаторы</span>
+            <textarea
+              value={organizers}
+              onChange={(e) => setOrganizers(e.target.value)}
+              rows={2}
+              placeholder="Название, контакты, сайт организатора…"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              maxLength={8000}
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm font-medium text-slate-800">Для кого (аудитория)</span>
+            <input
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              maxLength={4000}
+              placeholder="Врачи, ординаторы, зоотехники…"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm font-medium text-slate-800">Формат</span>
+            <input
+              value={eventFormat}
+              onChange={(e) => setEventFormat(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              maxLength={1000}
+              placeholder="Онлайн, офлайн, гибрид…"
             />
           </label>
           <label className="block space-y-1 sm:col-span-2">

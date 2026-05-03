@@ -1388,6 +1388,9 @@ async function main() {
     update: {
       title: 'Вебинар: клинический аудит и протоколы (демо)',
       description: 'Демо-запись в календаре VetConnect. Реальные даты появятся после подключения открытых ICS/RSS в настройках.',
+      organizers: 'Образовательный комитет VetConnect (демо)',
+      audience: 'Практикующие ветврачи и руководители клиник',
+      eventFormat: 'Онлайн, без записи (демо)',
       startsAt: demoWebinarStart,
       endsAt: new Date(demoWebinarStart.getTime() + 2 * 60 * 60_000),
     },
@@ -1397,6 +1400,9 @@ async function main() {
       description:
         'Демо-запись в календаре VetConnect. Реальные даты появятся после подключения открытых ICS/RSS в настройках.',
       location: 'Онлайн',
+      organizers: 'Образовательный комитет VetConnect (демо)',
+      audience: 'Практикующие ветврачи и руководители клиник',
+      eventFormat: 'Онлайн, без записи (демо)',
       url: null,
       startsAt: demoWebinarStart,
       endsAt: new Date(demoWebinarStart.getTime() + 2 * 60 * 60_000),
@@ -1411,6 +1417,9 @@ async function main() {
     update: {
       title: 'Региональный ветеринарный конгресс (демо)',
       description: 'Демо-событие на несколько дней. Полный охват конференций — через внешние открытые календари.',
+      organizers: 'Оргкомитет конференции (демо)',
+      audience: 'Специалисты всех профилей',
+      eventFormat: 'Офлайн, симпозиум (демо)',
       startsAt: demoConfStart,
       endsAt: new Date(demoConfStart.getTime() + 8 * 60 * 60_000),
     },
@@ -1420,6 +1429,9 @@ async function main() {
       description:
         'Демо-событие на несколько дней. Полный охват конференций — через внешние открытые календари.',
       location: 'Москва (условный адрес)',
+      organizers: 'Оргкомитет конференции (демо)',
+      audience: 'Специалисты всех профилей',
+      eventFormat: 'Офлайн, симпозиум (демо)',
       url: null,
       startsAt: demoConfStart,
       endsAt: new Date(demoConfStart.getTime() + 8 * 60 * 60_000),

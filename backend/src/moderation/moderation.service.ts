@@ -303,6 +303,7 @@ export class ModerationService {
     articleCommentId: string | null;
     listingMessageId: string | null;
     lobbyMessageId: string | null;
+    vetEventCommentId: string | null;
   }): string | null {
     switch (report.targetType) {
       case ReportTargetType.USER:
@@ -316,6 +317,8 @@ export class ModerationService {
       case ReportTargetType.ARTICLE:
         return null;
       case ReportTargetType.ARTICLE_COMMENT:
+        return null;
+      case ReportTargetType.VET_EVENT_COMMENT:
         return null;
       case ReportTargetType.LISTING_MESSAGE:
         return null;
@@ -337,6 +340,7 @@ export class ModerationService {
         directMessageId: true,
         articleId: true,
         articleCommentId: true,
+        vetEventCommentId: true,
         listingMessageId: true,
         lobbyMessageId: true,
       },
@@ -377,6 +381,13 @@ export class ModerationService {
     if (r.targetType === ReportTargetType.ARTICLE_COMMENT && r.articleCommentId) {
       const c = await this.prisma.articleComment.findUnique({
         where: { id: r.articleCommentId },
+        select: { authorId: true },
+      });
+      return c?.authorId ?? null;
+    }
+    if (r.targetType === ReportTargetType.VET_EVENT_COMMENT && r.vetEventCommentId) {
+      const c = await this.prisma.vetEventComment.findUnique({
+        where: { id: r.vetEventCommentId },
         select: { authorId: true },
       });
       return c?.authorId ?? null;

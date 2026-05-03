@@ -39,6 +39,7 @@ export class ReportsService {
       directMessageId: null as string | null,
       articleId: null as string | null,
       articleCommentId: null as string | null,
+      vetEventCommentId: null as string | null,
       listingMessageId: null as string | null,
       lobbyMessageId: null as string | null,
     };
@@ -102,6 +103,17 @@ export class ReportsService {
         data.articleCommentId = id;
         break;
       }
+      case ReportTargetType.VET_EVENT_COMMENT: {
+        const id = dto.vetEventCommentId;
+        if (!id) throw new BadRequestException('Укажите vetEventCommentId');
+        const row = await this.prisma.vetEventComment.findUnique({
+          where: { id },
+          select: { id: true },
+        });
+        if (!row) throw new NotFoundException('Комментарий к мероприятию не найден');
+        data.vetEventCommentId = id;
+        break;
+      }
       case ReportTargetType.LISTING_MESSAGE: {
         const id = dto.listingMessageId;
         if (!id) throw new BadRequestException('Укажите listingMessageId');
@@ -162,6 +174,15 @@ export class ReportsService {
             body: true,
             articleId: true,
             article: { select: { id: true, title: true } },
+            author: { select: { id: true, email: true, profile: { select: { displayName: true } } } },
+          },
+        },
+        vetEventComment: {
+          select: {
+            id: true,
+            body: true,
+            vetEventId: true,
+            vetEvent: { select: { id: true, title: true } },
             author: { select: { id: true, email: true, profile: { select: { displayName: true } } } },
           },
         },

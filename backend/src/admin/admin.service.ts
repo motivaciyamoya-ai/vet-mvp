@@ -520,6 +520,15 @@ export class AdminService {
             author: { select: { id: true, email: true, profile: { select: { displayName: true } } } },
           },
         },
+        vetEventComment: {
+          select: {
+            id: true,
+            body: true,
+            vetEventId: true,
+            vetEvent: { select: { id: true, title: true } },
+            author: { select: { id: true, email: true, profile: { select: { displayName: true } } } },
+          },
+        },
         listingMessage: {
           select: {
             id: true,

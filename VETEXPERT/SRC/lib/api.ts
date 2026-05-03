@@ -441,6 +441,9 @@ export type VetEventDto = {
   title: string;
   description: string;
   location: string;
+  organizers: string;
+  audience: string;
+  eventFormat: string;
   url: string | null;
   startsAt: string;
   endsAt: string | null;
@@ -457,6 +460,30 @@ export async function apiVetEvents(range: { from: string; to: string }) {
   sp.set("from", range.from);
   sp.set("to", range.to);
   return apiFetch<{ from: string; to: string; items: VetEventDto[] }>(`/api/events?${sp.toString()}`);
+}
+
+export async function apiVetEventById(id: string) {
+  return apiFetch<VetEventDto>(`/api/events/${encodeURIComponent(id)}`);
+}
+
+export type VetEventCommentDto = {
+  id: string;
+  vetEventId: string;
+  body: string;
+  createdAt: string;
+  author: ArticleListAuthor;
+  authorModeration?: PublicModerationDto;
+};
+
+export async function apiVetEventComments(eventId: string) {
+  return apiFetch<VetEventCommentDto[]>(`/api/events/comments/${encodeURIComponent(eventId)}`);
+}
+
+export async function apiPostVetEventComment(eventId: string, body: string) {
+  return apiFetch<VetEventCommentDto>(`/api/events/comments/${encodeURIComponent(eventId)}`, {
+    method: "POST",
+    json: { body },
+  });
 }
 
 export type VetEventSyncSummary = {
@@ -488,6 +515,9 @@ export type AdminManualVetEventBody = {
   title: string;
   description?: string;
   location?: string;
+  organizers?: string;
+  audience?: string;
+  eventFormat?: string;
   url?: string;
   startsAt: string;
   endsAt?: string;
@@ -521,6 +551,7 @@ export type ReportTargetApi =
   | "DIRECT_MESSAGE"
   | "ARTICLE"
   | "ARTICLE_COMMENT"
+  | "VET_EVENT_COMMENT"
   | "LISTING_MESSAGE"
   | "LOBBY_MESSAGE";
 
@@ -533,6 +564,7 @@ export type CreateReportBody = {
   directMessageId?: string;
   articleId?: string;
   articleCommentId?: string;
+  vetEventCommentId?: string;
   listingMessageId?: string;
   lobbyMessageId?: string;
 };

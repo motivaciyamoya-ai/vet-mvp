@@ -6,6 +6,7 @@ import {
   MapPin,
   Sparkles,
 } from "lucide-react";
+import { Link } from "react-router";
 import { useEffect, useMemo, useState } from "react";
 import { apiVetEvents, type VetEventDto } from "../../lib/api";
 
@@ -340,17 +341,25 @@ export default function EventsPage() {
                             <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">{ev.description}</p>
                           ) : null}
                         </div>
-                        {ev.url ? (
-                          <a
-                            href={ev.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="shrink-0 inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:underline"
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          <Link
+                            to={`/events/${encodeURIComponent(ev.id)}`}
+                            className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-800 hover:underline"
                           >
-                            Подробнее
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        ) : null}
+                            Карточка · обсуждение
+                          </Link>
+                          {ev.url ? (
+                            <a
+                              href={ev.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-emerald-700 hover:underline"
+                            >
+                              Внешняя ссылка
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          ) : null}
+                        </div>
                       </div>
                     </li>
                   ))}

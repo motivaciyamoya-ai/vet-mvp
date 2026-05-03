@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -8,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { ModerationService } from '../moderation/moderation.service';
 import { createHash } from 'crypto';
 import ical from 'node-ical';
 import Parser from 'rss-parser';
@@ -35,6 +37,7 @@ export class VetEventsService implements OnApplicationBootstrap {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly moderation: ModerationService,
   ) {}
 
   /** Один пробный запуск после старта, чтобы ICS/RSS без CRON давали результат в dev. */
@@ -66,6 +69,57 @@ export class VetEventsService implements OnApplicationBootstrap {
       orderBy: [{ startsAt: 'asc' }, { title: 'asc' }],
     });
     return { from: from.toISOString(), to: to.toISOString(), items };
+  }
+
+  async byId(id: string) {
+    const row = await this.prisma.vetEvent.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException();
+    return row;
+  }
+
+  async commentsForEvent(eventId: string) {
+    const ev = await this.prisma.vetEvent.findUnique({ where: { id: eventId }, select: { id: true } });
+    if (!ev) throw new NotFoundException();
+    const rows = await this.prisma.vetEventComment.findMany({
+      where: { vetEventId: eventId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        author: { select: { id: true, email: true, profile: true } },
+      },
+    });
+    const modMap = await this.moderation.publicSummaryForUsers(rows.map((c) => c.authorId));
+    return rows.map((c) => ({
+      ...c,
+      authorModeration: modMap.get(c.authorId),
+    }));
+  }
+
+  async addComment(eventId: string, userId: string, body: string) {
+    const ev = await this.prisma.vetEvent.findUnique({ where: { id: eventId }, select: { id: true } });
+    if (!ev) throw new NotFoundException();
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { emailVerified: true },
+    });
+    if (!user?.emailVerified) {
+      throw new ForbiddenException('Подтвердите email, чтобы оставлять комментарии.');
+    }
+
+    const text = body.trim();
+    if (!text) throw new BadRequestException('Пустой комментарий');
+
+    const created = await this.prisma.vetEventComment.create({
+      data: { vetEventId: eventId, authorId: userId, body: text },
+      include: {
+        author: { select: { id: true, email: true, profile: true } },
+      },
+    });
+    const modMap = await this.moderation.publicSummaryForUsers([userId]);
+    return {
+      ...created,
+      authorModeration: modMap.get(userId),
+    };
   }
 
   async getSourcesConfig(): Promise<{ icsText: string; rssText: string }> {
@@ -107,6 +161,9 @@ export class VetEventsService implements OnApplicationBootstrap {
     description?: string;
     location?: string;
     url?: string;
+    organizers?: string;
+    audience?: string;
+    eventFormat?: string;
     startsAt: Date;
     endsAt?: Date;
   }) {
@@ -133,6 +190,9 @@ export class VetEventsService implements OnApplicationBootstrap {
         title: truncate(input.title.trim(), 480),
         description: truncate((input.description ?? '').trim(), 45000),
         location: truncate((input.location ?? '').trim(), 480),
+        organizers: truncate((input.organizers ?? '').trim(), 8000),
+        audience: truncate((input.audience ?? '').trim(), 4000),
+        eventFormat: truncate((input.eventFormat ?? '').trim(), 1000),
         url: sanitizeHttpUrl(input.url?.trim()) ?? null,
         startsAt: input.startsAt,
         endsAt,

@@ -32,6 +32,7 @@ import MessagesPage from "./pages/MessagesPage";
 import ArticleDetail from "./pages/ArticleDetail";
 import MarketplaceListingDetail from "./pages/MarketplaceListingDetail";
 import EventsPage from "./pages/EventsPage";
+import EventDetailPage from "./pages/EventDetailPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CookiePolicy from "./pages/CookiePolicy";
 
@@ -89,6 +90,7 @@ export const router = createBrowserRouter([
       { path: "articles", Component: Articles },
       { path: "articles/:id", Component: ArticleDetail },
       { path: "events", Component: EventsPage },
+      { path: "events/:id", Component: EventDetailPage },
       { path: "specialists", Component: Specialists },
       { path: "tools", Component: Tools },
       { path: "marketplace", Component: MarketplacePage },

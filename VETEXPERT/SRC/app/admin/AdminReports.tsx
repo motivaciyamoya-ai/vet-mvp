@@ -49,6 +49,13 @@ type Report = {
     userId: string;
     user: { id: string; email: string; profile: MiniProfile };
   } | null;
+  vetEventComment?: {
+    id: string;
+    body: string;
+    vetEventId: string;
+    vetEvent: { id: string; title: string };
+    author: { id: string; email: string; profile: MiniProfile };
+  } | null;
 };
 
 const TARGET_RU: Record<string, string> = {
@@ -58,6 +65,7 @@ const TARGET_RU: Record<string, string> = {
   DIRECT_MESSAGE: "Личное сообщение",
   ARTICLE: "Статья",
   ARTICLE_COMMENT: "Комментарий к статье",
+  VET_EVENT_COMMENT: "Комментарий к мероприятию",
   LISTING_MESSAGE: "Комментарий к объявлению",
   LOBBY_MESSAGE: "Общий чат (главная)",
 };
@@ -255,6 +263,19 @@ export default function AdminReports() {
                     className="text-emerald-700 hover:underline"
                   >
                     статья «{clip(r.articleComment.article.title, 40)}»
+                  </Link>
+                </p>
+              )}
+              {r.vetEventComment && (
+                <p className="mt-2 text-slate-600">
+                  <span className="font-semibold text-slate-800">Комментарий к мероприятию</span> (
+                  {displayName(r.vetEventComment.author.profile, r.vetEventComment.author.email)}):{" "}
+                  {clip(r.vetEventComment.body)}{" "}
+                  <Link
+                    to={`/events/${encodeURIComponent(r.vetEventComment.vetEvent.id)}`}
+                    className="text-emerald-700 hover:underline"
+                  >
+                    «{clip(r.vetEventComment.vetEvent.title, 40)}»
                   </Link>
                 </p>
               )}

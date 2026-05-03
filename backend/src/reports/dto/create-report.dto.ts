@@ -9,6 +9,7 @@ const REPORT_TARGETS = [
   'DIRECT_MESSAGE',
   'ARTICLE',
   'ARTICLE_COMMENT',
+  'VET_EVENT_COMMENT',
   'LISTING_MESSAGE',
   'LOBBY_MESSAGE',
 ] as const;
@@ -49,6 +50,11 @@ export class CreateReportDto {
   @IsOptional()
   @IsString()
   articleCommentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  vetEventCommentId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
