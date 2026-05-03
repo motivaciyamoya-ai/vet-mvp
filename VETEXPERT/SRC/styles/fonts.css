@@ -1,0 +1,6 @@
+/* Системный стек задаётся в Tailwind/theme; отдельные @font-face добавляйте при необходимости. */
+html {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}

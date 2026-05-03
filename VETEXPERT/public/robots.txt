@@ -1,0 +1,8 @@
+# VetPro CIS / VetExpert MVP — настройте host при продакшене
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: /sitemap.xml

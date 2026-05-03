@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VetPro CIS — wireframes</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
+    h1 { padding: 1rem 1.5rem; font-size: 1.1rem; margin: 0; border-bottom: 1px solid #334155; }
+    .grid { display: flex; flex-wrap: wrap; gap: 1rem; padding: 1rem; align-items: flex-start; }
+    .phone {
+      width: 280px; height: 520px; background: #1e293b; border-radius: 20px;
+      border: 2px solid #475569; padding: 10px; display: flex; flex-direction: column;
+    }
+    .label { font-size: 0.7rem; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .bar { height: 36px; background: #334155; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; padding: 0 8px; font-size: 0.75rem; }
+    .content { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+    .row { height: 44px; background: #0f172a; border-radius: 8px; padding: 8px; font-size: 0.75rem; display: flex; align-items: center; }
+    .row.small { height: 32px; opacity: 0.85; }
+    .fab { position: relative; align-self: flex-end; width: 48px; height: 48px; background: #dc2626; border-radius: 50%; margin-top: auto; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; }
+    .nav { display: flex; height: 48px; background: #334155; border-radius: 8px; margin-top: 6px; }
+    .nav span { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; border-right: 1px solid #475569; }
+    .nav span:last-child { border: 0; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #0369a1; font-size: 0.65rem; }
+  </style>
+</head>
+<body>
+  <h1>VetPro CIS — низкодетальные wireframes (прототип)</h1>
+  <div class="grid">
+    <div>
+      <div class="label">Лента / форум</div>
+      <div class="phone">
+        <div class="bar">Поиск…</div>
+        <div class="content">
+          <div class="row"><span class="pill">Форум</span> &nbsp; Статьи</div>
+          <div class="row small">Категория: Терапия</div>
+          <div class="row">Тема: поствакцинальная реакция</div>
+          <div class="row">Тема: КПП у кошки</div>
+          <div class="row">Тема: дозировка метронидазола</div>
+        </div>
+        <div class="fab">SOS</div>
+        <div class="nav"><span>Лента</span><span>Объявл</span><span>Кальк</span><span>SOS</span><span>Профиль</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Объявление + отклик</div>
+      <div class="phone">
+        <div class="bar">← Вакансия · Москва</div>
+        <div class="content">
+          <div class="row small">Клиника «…» · полный день</div>
+          <div class="row" style="height:auto; min-height:80px;">Описание вакансии (текст)…</div>
+          <div class="row" style="background:#0369a1; justify-content:center;">Откликнуться</div>
+          <div class="row small">Чат по объявлению</div>
+          <div class="row small">Вы: Здравствуйте…</div>
+          <div class="row small">Работодатель: Добрый день…</div>
+        </div>
+        <div class="nav"><span>Лента</span><span>Объявл</span><span>Кальк</span><span>SOS</span><span>Профиль</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">SOS</div>
+      <div class="phone">
+        <div class="bar">Экстренная помощь</div>
+        <div class="content" style="justify-content:center;">
+          <div class="row" style="height:auto; text-align:center; background:#451a1a; border:1px solid #991b1b;">
+            SOS предназначен для срочных профессиональных вопросов. Ложные вызовы ограничиваются.
+          </div>
+          <div class="row" style="justify-content:center; background:#dc2626; font-weight:700;">Создать SOS-запрос</div>
+          <div class="row small">Активные запросы в вашем регионе (список)</div>
+        </div>
+        <div class="nav"><span>Лента</span><span>Объявл</span><span>Кальк</span><span>SOS</span><span>Профиль</span></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

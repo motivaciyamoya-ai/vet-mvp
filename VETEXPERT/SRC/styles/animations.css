@@ -1,0 +1,195 @@
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Уровни срочности на форуме / главная — общие имена классов для всех экранов */
+
+@keyframes vc-urgency-fire {
+  0%,
+  100% {
+    opacity: 1;
+    filter: brightness(1.05) drop-shadow(0 0 3px rgba(255, 120, 0, 0.75));
+    transform: scale(1) rotate(-4deg);
+  }
+  20% {
+    opacity: 0.82;
+    filter: brightness(1.65) drop-shadow(0 0 14px rgba(255, 220, 80, 1));
+    transform: scale(1.22) rotate(6deg);
+  }
+  45% {
+    opacity: 0.94;
+    filter: brightness(0.92) drop-shadow(0 0 4px rgba(220, 60, 40, 0.8));
+    transform: scale(1.08) rotate(-5deg);
+  }
+  70% {
+    opacity: 0.78;
+    filter: brightness(1.5) drop-shadow(0 0 11px rgba(255, 200, 0, 0.95));
+    transform: scale(1.18) rotate(4deg);
+  }
+}
+
+.vc-urgency-fire {
+  animation: vc-urgency-fire 0.95s ease-in-out infinite;
+}
+
+@keyframes vc-urgency-exclaim {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.26);
+  }
+}
+
+.vc-urgency-exclaim {
+  animation: vc-urgency-exclaim 0.88s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+@keyframes vc-urgency-bulb {
+  0%,
+  42% {
+    opacity: 1;
+  }
+  50%,
+  92% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.vc-urgency-bulb {
+  animation: vc-urgency-bulb 1.15s linear infinite;
+}
+
+.vc-urgency-icon {
+  display: block;
+}
+
+/* Фон «Критично» — в такт огоньку (те же доли ключевых кадров и 0.95s ease-in-out) */
+@keyframes vc-critical-soft-bg {
+  0%,
+  100% {
+    background-color: rgba(239, 68, 68, 0.076);
+    box-shadow:
+      inset 0 0 14px rgba(239, 68, 68, 0.1),
+      0 0 0 1px rgba(252, 165, 165, 0.45);
+  }
+  20% {
+    background-color: rgba(239, 68, 68, 0.2);
+    box-shadow:
+      inset 0 0 22px rgba(239, 68, 68, 0.22),
+      0 0 0 1px rgba(252, 165, 165, 0.58),
+      0 0 16px rgba(239, 68, 68, 0.12);
+  }
+  45% {
+    background-color: rgba(239, 68, 68, 0.09);
+    box-shadow:
+      inset 0 0 12px rgba(239, 68, 68, 0.08),
+      0 0 0 1px rgba(252, 165, 165, 0.42);
+  }
+  70% {
+    background-color: rgba(239, 68, 68, 0.18);
+    box-shadow:
+      inset 0 0 20px rgba(239, 68, 68, 0.18),
+      0 0 0 1px rgba(252, 165, 165, 0.52),
+      0 0 12px rgba(239, 68, 68, 0.1);
+  }
+}
+
+.vc-urgency-critical-badge-bg {
+  animation: vc-critical-soft-bg 0.95s ease-in-out infinite;
+}
+
+@keyframes vc-critical-chip-on-gradient-bg {
+  0%,
+  100% {
+    background-color: rgba(255, 255, 255, 0.16);
+    box-shadow:
+      inset 0 0 22px rgba(239, 68, 68, 0.16),
+      0 0 0 1px rgba(255, 255, 255, 0.35);
+  }
+  20% {
+    background-color: rgba(255, 228, 228, 0.38);
+    box-shadow:
+      inset 0 0 32px rgba(239, 68, 68, 0.35),
+      0 0 0 1px rgba(255, 220, 220, 0.55),
+      0 0 18px rgba(239, 68, 68, 0.2);
+  }
+  45% {
+    background-color: rgba(255, 255, 255, 0.14);
+    box-shadow:
+      inset 0 0 18px rgba(239, 68, 68, 0.12),
+      0 0 0 1px rgba(255, 255, 255, 0.32);
+  }
+  70% {
+    background-color: rgba(255, 218, 218, 0.32);
+    box-shadow:
+      inset 0 0 28px rgba(239, 68, 68, 0.28),
+      0 0 0 1px rgba(255, 210, 210, 0.5),
+      0 0 14px rgba(239, 68, 68, 0.16);
+  }
+}
+
+.vc-urgency-critical-chip-on-gradient {
+  animation: vc-critical-chip-on-gradient-bg 0.95s ease-in-out infinite;
+}
+
+@keyframes vc-critical-disc-halo {
+  0%,
+  100% {
+    box-shadow:
+      0 4px 14px rgba(185, 28, 28, 0.32),
+      0 0 0 3px rgba(239, 68, 68, 0);
+  }
+  20% {
+    box-shadow:
+      0 6px 22px rgba(185, 28, 28, 0.5),
+      0 0 0 6px rgba(239, 68, 68, 0.12);
+  }
+  45% {
+    box-shadow:
+      0 4px 12px rgba(185, 28, 28, 0.28),
+      0 0 0 2px rgba(239, 68, 68, 0.04);
+  }
+  70% {
+    box-shadow:
+      0 6px 20px rgba(185, 28, 28, 0.45),
+      0 0 0 5px rgba(239, 68, 68, 0.1);
+  }
+}
+
+.vc-urgency-critical-disc {
+  animation: vc-critical-disc-halo 0.95s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vc-urgency-fire,
+  .vc-urgency-exclaim,
+  .vc-urgency-bulb {
+    animation: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  .vc-urgency-critical-badge-bg,
+  .vc-urgency-critical-chip-on-gradient,
+  .vc-urgency-critical-disc {
+    animation: none !important;
+  }
+}

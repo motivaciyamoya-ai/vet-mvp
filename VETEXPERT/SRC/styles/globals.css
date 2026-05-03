@@ -1,0 +1,4 @@
+/* Точечные глобальные правки поверх Tailwind preflight. */
+*, *::before, *::after {
+  box-sizing: border-box;
+}

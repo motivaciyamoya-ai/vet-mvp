@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vet
+      POSTGRES_PASSWORD: vet
+      POSTGRES_DB: vetmvp
+    volumes:
+      - vet_pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://vet:vet@postgres:5432/vetmvp
+      # Если вы используете JWT/SMTP/Push — заполните эти значения в .env (см backend/.env.example)
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+    volumes:
+      - backend_uploads:/app/uploads
+
+  web:
+    build:
+      context: ./VETEXPERT
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  vet_pg_data:
+  backend_uploads:
+

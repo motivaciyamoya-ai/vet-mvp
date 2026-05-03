@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <!-- simple medical cross + paw -->
+  <path d="M29 16h6v10h10v6H35v10h-6V32H19v-6h10V16z" fill="#fff" opacity="0.95"/>
+  <g fill="#fff" opacity="0.95">
+    <circle cx="20" cy="44" r="3"/>
+    <circle cx="27" cy="47" r="3"/>
+    <circle cx="34" cy="47" r="3"/>
+    <circle cx="41" cy="44" r="3"/>
+    <path d="M31 40c-6 0-10 4-10 8 0 2 2 4 4 4h12c2 0 4-2 4-4 0-4-4-8-10-8z"/>
+  </g>
+</svg>
+

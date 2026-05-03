@@ -1,0 +1,39 @@
+# Node
+**/node_modules/
+**/dist/
+**/.vite/
+**/.turbo/
+**/.cache/
+
+# Logs
+**/*.log
+
+# Env
+**/.env
+**/.env.local
+
+# Prisma
+backend/prisma/dev.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (local)
+backend/uploads/
+
+node_modules/
+dist/
+
+# Инкрементальная сборка TS (мешает nest build/watch при смене rootDir)
+*.tsbuildinfo
+# Загрузки пользователей (локально)
+backend/uploads/*
+!backend/uploads/.gitkeep
+.env
+*.iml
+.idea/
+.dart_tool/
+build/
+*.lock
+!mobile/pubspec.lock

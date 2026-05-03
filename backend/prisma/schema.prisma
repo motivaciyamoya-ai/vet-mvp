@@ -1,0 +1,533 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SPECIALIST
+  MODERATOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ReportTargetType {
+  THREAD
+  POST
+  /// Профиль пользователя или поведение вне конкретного текста в ленте.
+  USER
+  DIRECT_MESSAGE
+  ARTICLE
+  ARTICLE_COMMENT
+  LISTING_MESSAGE
+  LOBBY_MESSAGE
+}
+
+enum ListingType {
+  JOB
+  BUY
+  SELL
+}
+
+enum SosStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum SosUrgency {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ModerationStatus {
+  NONE
+  WARNED
+  TEMP_SUSPENDED
+  BANNED
+}
+
+enum ModerationSanction {
+  WARN
+  TEMP_SUSPEND
+  LIFETIME_BAN
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  // Подтверждённый email (линк из письма). Демо-аккаунты в seed ставятся true.
+  emailVerified  Boolean         @default(false)
+  /// Согласие с политикой/правилами при регистрации (для юридической фиксации).
+  policyAcceptedAt DateTime?
+  /// Версия политики/правил, с которой пользователь согласился (например "1.0").
+  policyVersion    String?
+  // Баланс VetCoin (денормализовано).
+  vetCoinBalance Int             @default(0)
+  role           UserRole        @default(SPECIALIST)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  profile        Profile?
+  refreshTokens  RefreshToken[]
+  forumThreads   ForumThread[]
+  forumPosts     ForumPost[]
+  reports        Report[]        @relation("Reporter")
+  articles       Article[]
+  listings          Listing[]
+  listingsPurchased Listing[] @relation("ListingBuyer")
+  listingMsgs       ListingMessage[]
+  sosRequests    SosRequest[]
+  pushTokens     PushToken[]
+  vetCoinLedger       VetCoinLedger[]
+  emailVerification   EmailVerificationToken?
+  userNotifications   UserNotification[]
+  thanksGiven         ProfileThank[]          @relation("ThanksFrom")
+  thanksReceived      ProfileThank[]          @relation("ThanksTo")
+  dmConversationsLow  DirectConversation[]    @relation("DmUserLow")
+  dmConversationsHigh DirectConversation[]   @relation("DmUserHigh")
+  directMessagesSent  DirectMessage[]         @relation("DmMessageSender")
+  articleComments     ArticleComment[]
+  lobbyMessages       LobbyMessage[]
+  lobbyReactions      LobbyMessageReaction[]
+  reportedInReports   Report[]                @relation("ReportedProfile")
+  moderatedReportsTarget Report[]            @relation("ReportModeratedUser")
+  moderatedReportsModerator Report[]         @relation("ReportModerator")
+
+  moderationStatus      ModerationStatus @default(NONE)
+  moderationUntil       DateTime?
+  /// Публичный текст для пользователей и бейджа у аватарки (без скрытых деталей админки).
+  moderationReasonPublic String?
+  lastSanctionKind      ModerationSanction?
+  lastSanctionAt        DateTime?
+
+  /// Ссылка на последнюю «жалобу-решение», из которой взяты публичные пояснения (опционально).
+  lastSanctionReportId String? @unique
+  lastSanctionReport   Report? @relation("UserLastSanctionReport", fields: [lastSanctionReportId], references: [id], onDelete: SetNull)
+}
+
+model ProfileThank {
+  id         String   @id @default(cuid())
+  fromUserId String
+  fromUser   User     @relation("ThanksFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId   String
+  toUser     User     @relation("ThanksTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId])
+}
+
+model DirectConversation {
+  id         String           @id @default(cuid())
+  userLowId  String
+  userHighId String
+  userLow    User             @relation("DmUserLow", fields: [userLowId], references: [id], onDelete: Cascade)
+  userHigh   User             @relation("DmUserHigh", fields: [userHighId], references: [id], onDelete: Cascade)
+  messages   DirectMessage[]
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([userLowId, userHighId])
+  @@index([userLowId])
+  @@index([userHighId])
+}
+
+model DirectMessage {
+  id             String             @id @default(cuid())
+  conversationId String
+  conversation   DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User               @relation("DmMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  body           String             @db.Text
+  readAt         DateTime?
+  createdAt      DateTime           @default(now())
+  reports        Report[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model VetCoinLedger {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta        Int
+  balanceAfter Int
+  reason       String
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Country {
+  id       String    @id @default(cuid())
+  code     String    @unique
+  nameRu   String
+  profiles Profile[]
+}
+
+model JobTitle {
+  id       String    @id @default(cuid())
+  nameRu   String
+  profiles Profile[]
+}
+
+model Profile {
+  id             String              @id @default(cuid())
+  userId         String              @unique
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName    String
+  /// День рождения (дата): для новых регистраций обязательна; исторические записи могут быть без даты.
+  birthDate      DateTime?           @db.Date
+  countryId      String
+  country        Country             @relation(fields: [countryId], references: [id])
+  city           String
+  jobTitleId     String
+  jobTitle       JobTitle            @relation(fields: [jobTitleId], references: [id])
+  avatarUrl      String?
+  verification   VerificationStatus  @default(NONE)
+}
+
+/// Общий чат на главной (только авторизованные могут читать/писать через API).
+model LobbyMessage {
+  id        String                 @id @default(cuid())
+  userId    String
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String                 @db.VarChar(1600)
+  createdAt DateTime               @default(now())
+  reactions LobbyMessageReaction[]
+  reports   Report[]
+
+  @@index([createdAt])
+}
+
+model LobbyMessageReaction {
+  id        String       @id @default(cuid())
+  messageId String
+  message   LobbyMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String       @db.VarChar(24)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+model ForumCategory {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  description String?
+  iconEmoji   String        @default("💬")
+  sortOrder   Int           @default(0)
+  threads     ForumThread[]
+}
+
+model ForumThread {
+  id         String          @id @default(cuid())
+  categoryId String
+  category   ForumCategory   @relation(fields: [categoryId], references: [id])
+  authorId   String
+  author     User            @relation(fields: [authorId], references: [id])
+  title      String
+  tags       String          @default("")
+  // Пути вида /uploads/thread/uuid.ext (загрузка после POST /api/uploads/thread-image).
+  coverImageUrls String[]  @default([])
+  // Пост с выбранным решением (не первое сообщение темы).
+  acceptedPostId String?              @unique
+  acceptedPost   ForumPost?            @relation("ForumAcceptedSolution", fields: [acceptedPostId], references: [id], onDelete: SetNull)
+  solvedAt       DateTime?
+  // Одно напоминание автору темы выбрать решение после первых ответов.
+  solutionPickNotifiedAt DateTime?
+  /// Уникальные посетители темы (см. ForumThreadViewer), денормализация для лент и карточек.
+  uniqueViewCount        Int                     @default(0)
+  /// Количество лайков темы (см. ForumThreadLike).
+  likeCount              Int                     @default(0)
+
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  posts      ForumPost[]
+  reports    Report[]
+  viewers    ForumThreadViewer[]
+  likes      ForumThreadLike[]
+}
+
+/// Лайк темы: один голос на likerKey (u:userId или a:uuid).
+model ForumThreadLike {
+  id        String      @id @default(cuid())
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  likerKey  String
+  createdAt DateTime    @default(now())
+
+  @@unique([threadId, likerKey])
+  @@index([threadId])
+}
+
+/// Один ключ на пару тема×посетитель: u:userId для авторизованных, a:uuid для гостей.
+model ForumThreadViewer {
+  id        String      @id @default(cuid())
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  viewerKey String
+  createdAt DateTime    @default(now())
+
+  @@unique([threadId, viewerKey])
+  @@index([threadId])
+}
+
+model ForumPost {
+  id        String      @id @default(cuid())
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User        @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime    @default(now())
+  reports   Report[]
+
+  acceptedAsSolutionIn ForumThread? @relation("ForumAcceptedSolution")
+}
+
+model UserNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  threadId  String?
+  /// Для type=DIRECT_MESSAGE: открыть `/messages/:conversationId`, снимать read вместе с markRead диалога.
+  conversationId String?
+  /// Для type=ARTICLE_COMMENT: открыть `/articles/:articleId`.
+  articleId String?
+  article   Article? @relation("ArticleCommentNotification", fields: [articleId], references: [id], onDelete: SetNull)
+  /// Для type=LISTING_MESSAGE: открыть `/marketplace/:listingId`.
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  /// Кто инициировал событие (напр. благодарность на профиле): открыть `/users/:actorUserId`.
+  actorUserId    String?
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([userId, conversationId])
+  @@index([articleId])
+  @@index([listingId])
+}
+
+model Report {
+  id         String             @id @default(cuid())
+  reporterId String
+  reporter   User               @relation("Reporter", fields: [reporterId], references: [id])
+  targetType ReportTargetType
+  threadId   String?
+  thread     ForumThread?       @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  postId     String?
+  post       ForumPost?         @relation(fields: [postId], references: [id], onDelete: SetNull)
+  /// USER: жалоба на профиль или поведение пользователя.
+  reportedUserId String?
+  reportedUser   User?            @relation("ReportedProfile", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  directMessageId String?
+  directMessage   DirectMessage? @relation(fields: [directMessageId], references: [id], onDelete: SetNull)
+  articleId String?
+  article   Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  articleCommentId String?
+  articleComment   ArticleComment? @relation(fields: [articleCommentId], references: [id], onDelete: SetNull)
+  listingMessageId String?
+  listingMessage   ListingMessage? @relation(fields: [listingMessageId], references: [id], onDelete: SetNull)
+  lobbyMessageId String?
+  lobbyMessage   LobbyMessage? @relation(fields: [lobbyMessageId], references: [id], onDelete: SetNull)
+  reason     String
+  status     String             @default("OPEN")
+  createdAt  DateTime           @default(now())
+
+  /// Пользователь, на которого применено решение жалобы (если жалоба переведена в ACTION_TAKEN).
+  moderatedUserId String?
+  moderatedUser    User?         @relation("ReportModeratedUser", fields: [moderatedUserId], references: [id], onDelete: SetNull)
+  moderatorUserId String?
+  moderatorUser    User?         @relation("ReportModerator", fields: [moderatorUserId], references: [id], onDelete: SetNull)
+
+  sanctionKind          ModerationSanction?
+  /// Для TEMP_SUSPEND — до какого времени действует санкция; для WARN здесь можно хранить «истечение» ярлыка.
+  sanctionEndsAt       DateTime?
+  sanctionReasonPublic String?
+  moderatedAt           DateTime?
+
+  userLastSanctionPointer User? @relation("UserLastSanctionReport")
+
+  @@index([reportedUserId])
+  @@index([status, createdAt])
+  @@index([moderatedUserId])
+  @@index([moderatorUserId])
+}
+
+model ArticleCategory {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  iconEmoji String    @default("📄")
+  sortOrder Int       @default(0)
+  articles  Article[]
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Конференции, вебинары и школьные даты для ветспециалистов (ингест ICS/RSS из открытых лент).
+model VetEvent {
+  id          String    @id @default(cuid())
+  /// Устойчивый ключ дедупликации: хеш источник+uid+время и т.п.
+  slugKey     String    @unique
+  title       String
+  description String    @default("") @db.Text
+  location    String    @default("")
+  url         String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  timezone    String?
+  /// Тип источника: ics | rss | seed | manual
+  source      String
+  /// URL фида или метка (seed / admin для ручных).
+  sourceFeed  String
+  /// UID из ICS или guid из RSS (может быть пустым).
+  externalUid String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([startsAt])
+  @@index([sourceFeed])
+}
+
+model Article {
+  id         String          @id @default(cuid())
+  categoryId String
+  category   ArticleCategory @relation(fields: [categoryId], references: [id])
+  authorId   String
+  author     User            @relation(fields: [authorId], references: [id])
+  title      String
+  excerpt    String
+  body       String
+  published  Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  comments   ArticleComment[]
+  reports    Report[]
+  commentNotifications UserNotification[] @relation("ArticleCommentNotification")
+}
+
+model ArticleComment {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  reports   Report[]
+
+  @@index([articleId])
+}
+
+model Listing {
+  id          String           @id @default(cuid())
+  type        ListingType
+  authorId    String
+  author      User             @relation(fields: [authorId], references: [id])
+  buyerId     String?
+  buyer       User?            @relation("ListingBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  title       String
+  description String
+  region      String
+  /// Изображения объявления (URL из POST /api/uploads/listing-image → /uploads/listings/…)
+  imageUrls   String[]         @default([])
+  createdAt   DateTime         @default(now())
+  messages    ListingMessage[]
+  notifications UserNotification[]
+
+  @@index([buyerId])
+}
+
+model ListingMessage {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+  reports   Report[]
+}
+
+model SosRequest {
+  id         String     @id @default(cuid())
+  authorId   String
+  author     User       @relation(fields: [authorId], references: [id])
+  body       String
+  animalKind String
+  urgency    SosUrgency @default(MEDIUM)
+  region     String?
+  status     SosStatus  @default(OPEN)
+  createdAt  DateTime   @default(now())
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+}
+
+/// Справочник препаратов для калькулятора дозировок (редактируется в админ-панели).
+model DosageDrug {
+  id          String   @id
+  nameRu      String
+  category    String
+  summary     String   @db.Text
+  instruction String   @db.Text
+  warnings    String?  @db.Text
+  /// Объект вида { "dog": { "mgPerKg", "freq", "duration", "note?" }, … }
+  dosing      Json
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([active, sortOrder])
+}

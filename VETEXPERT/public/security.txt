@@ -1,0 +1,5 @@
+Contact: mailto:support@vetmvp.local
+Preferred-Languages: ru, en
+Canonical: https://example.com/security.txt
+
+# Замените URL и почту на боевые значения после деплоя.
