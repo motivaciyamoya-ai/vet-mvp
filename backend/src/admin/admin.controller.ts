@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -63,6 +64,7 @@ export class AdminController {
     private readonly dashboard: AdminDashboardService,
     private readonly dosageDrugs: DosageDrugsService,
     private readonly vetEvents: VetEventsService,
+    private readonly liveTraffic: LiveTrafficService,
   ) {}
 
   @Get('stats')
@@ -73,6 +75,20 @@ export class AdminController {
   @Get('analytics')
   analytics() {
     return this.dashboard.analytics();
+  }
+
+  /** Снимок посещений в памяти процесса: IP, метод/путь, бот или человек (по User-Agent). */
+  @Get('analytics/live-traffic')
+  liveTrafficSnapshot(@Query('windowSec') windowSec?: string) {
+    let w: number | undefined;
+    if (windowSec != null && String(windowSec).trim() !== '') {
+      const n = parseInt(String(windowSec), 10);
+      if (!Number.isFinite(n) || n < 30 || n > 3600) {
+        throw new BadRequestException('Параметр windowSec должен быть числом 30–3600.');
+      }
+      w = n;
+    }
+    return this.liveTraffic.getSnapshot(w);
   }
 
   @Get('settings')

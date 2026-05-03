@@ -23,7 +23,6 @@ import { DosageDrugsModule } from './dosage-drugs/dosage-drugs.module';
 import { HomeChatModule } from './home-chat/home-chat.module';
 import { VetEventsModule } from './vet-events/vet-events.module';
 import { ModerationModule } from './moderation/moderation.module';
-
 @Module({
   imports: [
     ScheduleModule.forRoot(),

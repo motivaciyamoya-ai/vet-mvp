@@ -575,3 +575,30 @@ export async function apiCreateReport(body: CreateReportBody) {
     json: body,
   });
 }
+
+/** Снимок «живого» трафика (память процесса backend, не БД). */
+export type AdminLiveTrafficEvent = {
+  at: string;
+  ip: string;
+  method: string;
+  path: string;
+  userAgent: string;
+  isBot: boolean;
+  botFamily: string | null;
+};
+
+export type AdminLiveTrafficSnapshot = {
+  windowSec: number;
+  generatedAt: string;
+  uniqueHumanIps: number;
+  uniqueBotIps: number;
+  totalHits: number;
+  searchBotHitsByFamily: { family: string; hits: number }[];
+  recent: AdminLiveTrafficEvent[];
+};
+
+export async function apiAdminLiveTraffic(windowSec = 300) {
+  const sp = new URLSearchParams();
+  sp.set("windowSec", String(windowSec));
+  return apiFetch<AdminLiveTrafficSnapshot>(`/api/admin/analytics/live-traffic?${sp.toString()}`);
+}

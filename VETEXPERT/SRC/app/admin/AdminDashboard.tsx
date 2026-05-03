@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "../../lib/api";
+import { apiAdminLiveTraffic, apiFetch, type AdminLiveTrafficSnapshot } from "../../lib/api";
 import {
   ResponsiveContainer,
   BarChart,
@@ -58,9 +58,14 @@ function fmtDay(d: string | Date) {
   }
 }
 
+const LIVE_POLL_MS = 4000;
+
 export default function AdminDashboard() {
   const [data, setData] = useState<Analytics | null>(null);
   const [error, setError] = useState("");
+  const [liveWindowSec, setLiveWindowSec] = useState(300);
+  const [live, setLive] = useState<AdminLiveTrafficSnapshot | null>(null);
+  const [liveErr, setLiveErr] = useState("");
 
   useEffect(() => {
     apiFetch<Analytics>("/api/admin/analytics")
@@ -84,6 +89,32 @@ export default function AdminDashboard() {
         setError(`Не удалось загрузить аналитику: ${msg}`);
       });
   }, []);
+
+  useEffect(() => {
+    if (!data) return;
+    let cancelled = false;
+    const load = () => {
+      apiAdminLiveTraffic(liveWindowSec)
+        .then((r) => {
+          if (!cancelled) {
+            setLive(r);
+            setLiveErr("");
+          }
+        })
+        .catch((e: unknown) => {
+          if (!cancelled) {
+            setLive(null);
+            setLiveErr(e instanceof Error ? e.message : String(e));
+          }
+        });
+    };
+    load();
+    const id = window.setInterval(load, LIVE_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [liveWindowSec, data]);
 
   const roleChart = useMemo(
     () =>
@@ -144,6 +175,129 @@ export default function AdminDashboard() {
           Сводка за 14 дней, распределения и последние регистрации (данные из БД).
         </p>
       </div>
+
+      <section className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-white to-indigo-50/60 p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              Посетители в реальном времени
+              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                обновление ~{Math.round(LIVE_POLL_MS / 1000)} с
+              </span>
+            </h2>
+            <p className="text-slate-600 text-xs sm:text-sm mt-1 max-w-3xl">
+              Уникальные IP за выбранное окно среди запросов к API (SPA ходит в <code className="text-[11px] bg-white/80 px-1 rounded">/api/*</code>
+              ). Админка и Swagger не считаются. По User-Agent распознаются поисковые и прочие боты (эвристика). За
+              reverse‑proxy задайте <code className="text-[11px] bg-white/80 px-1 rounded">TRUST_PROXY=1</code>, чтобы видеть реальный клиентский IP из{" "}
+              <code className="text-[11px] bg-white/80 px-1 rounded">X‑Forwarded‑For</code>.
+            </p>
+          </div>
+          <label className="flex flex-col gap-1 shrink-0 text-sm">
+            <span className="text-slate-600 font-medium">Окно, сек</span>
+            <select
+              value={liveWindowSec}
+              onChange={(e) => setLiveWindowSec(Number(e.target.value))}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
+            >
+              <option value={120}>120</option>
+              <option value={300}>300 (5 мин)</option>
+              <option value={600}>600</option>
+              <option value={900}>900 (15 мин)</option>
+            </select>
+          </label>
+        </div>
+
+        {liveErr ? (
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{liveErr}</p>
+        ) : null}
+
+        {!liveErr && live ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-xl bg-white/90 border border-slate-200 p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Люди (уник. IP)</p>
+                <p className="text-2xl font-bold text-emerald-700 mt-1">{live.uniqueHumanIps}</p>
+              </div>
+              <div className="rounded-xl bg-white/90 border border-slate-200 p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Боты (уник. IP)</p>
+                <p className="text-2xl font-bold text-indigo-700 mt-1">{live.uniqueBotIps}</p>
+              </div>
+              <div className="rounded-xl bg-white/90 border border-slate-200 p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Все обращения</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">{live.totalHits}</p>
+              </div>
+              <div className="rounded-xl bg-white/90 border border-slate-200 p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Снимок</p>
+                <p className="text-xs font-mono text-slate-600 mt-2 leading-snug">{new Date(live.generatedAt).toLocaleString("ru-RU")}</p>
+              </div>
+            </div>
+
+            {live.searchBotHitsByFamily.length > 0 ? (
+              <div className="rounded-xl bg-white/90 border border-slate-200 p-4">
+                <p className="font-semibold text-slate-800 text-sm mb-2">Запросы от роботов по типу (за окно)</p>
+                <ul className="flex flex-wrap gap-2">
+                  {live.searchBotHitsByFamily.map((x) => (
+                    <li
+                      key={x.family}
+                      className="text-xs px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-100"
+                    >
+                      {x.family}: <span className="font-bold">{x.hits}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 italic">За это окно запросов от распознанных ботов не было.</p>
+            )}
+
+            <div className="rounded-xl bg-white border border-slate-200 overflow-hidden">
+              <div className="px-4 py-2 border-b border-slate-100 text-sm font-semibold text-slate-800">
+                Последние события (до 100 в окне)
+              </div>
+              <div className="overflow-x-auto max-h-[min(28rem,50vh)]">
+                <table className="w-full text-xs sm:text-sm">
+                  <thead className="bg-slate-50 text-left text-slate-600 sticky top-0">
+                    <tr>
+                      <th className="p-2 whitespace-nowrap">Время</th>
+                      <th className="p-2 whitespace-nowrap">IP</th>
+                      <th className="p-2 whitespace-nowrap">Тип</th>
+                      <th className="p-2 whitespace-nowrap">Бот</th>
+                      <th className="p-2">Запрос</th>
+                      <th className="p-2 min-w-[8rem]">User-Agent</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {live.recent.map((row, i) => (
+                      <tr key={`${row.at}-${row.ip}-${i}`} className="border-t border-slate-100 align-top hover:bg-slate-50/80">
+                        <td className="p-2 text-slate-600 whitespace-nowrap font-mono text-[11px]">
+                          {new Date(row.at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                        </td>
+                        <td className="p-2 font-mono text-[11px] text-slate-800">{row.ip}</td>
+                        <td className="p-2">
+                          <span
+                            className={`inline-flex px-1.5 py-0.5 rounded font-semibold ${
+                              row.isBot ? "bg-indigo-100 text-indigo-900" : "bg-emerald-100 text-emerald-900"
+                            }`}
+                          >
+                            {row.isBot ? "Бот" : "Человек"}
+                          </span>
+                        </td>
+                        <td className="p-2 text-slate-600">{row.botFamily ?? "—"}</td>
+                        <td className="p-2 font-mono text-[11px] text-slate-800 break-all max-w-[18rem] sm:max-w-xs">
+                          {row.method} {row.path}
+                        </td>
+                        <td className="p-2 text-slate-600 break-all max-w-xs">{row.userAgent || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        ) : liveErr ? null : (
+          <p className="text-slate-600 text-sm">Загрузка живой статистики…</p>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map(([label, value]) => (

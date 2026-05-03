@@ -6,6 +6,8 @@ import helmet from 'helmet';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { LiveTrafficService } from './live-traffic/live-traffic.service';
+import { createLiveTrafficMiddleware } from './live-traffic/live-traffic.express';
 
 async function bootstrap() {
   const uploadsRoot = join(process.cwd(), 'uploads');
@@ -14,6 +16,13 @@ async function bootstrap() {
   mkdirSync(join(uploadsRoot, 'listings'), { recursive: true });
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const tp = process.env.TRUST_PROXY?.trim();
+  if (tp === '1' || tp === 'true') {
+    app.set('trust proxy', 1);
+  } else if (tp && /^[1-9]\d*$/.test(tp)) {
+    app.set('trust proxy', parseInt(tp, 10));
+  }
+  app.use(createLiveTrafficMiddleware(app.get(LiveTrafficService)));
   app.useStaticAssets(uploadsRoot, { prefix: '/uploads/' });
   app.use(
     helmet({
