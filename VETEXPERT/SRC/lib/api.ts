@@ -10,6 +10,31 @@ const ACCESS_KEY = "vetmvp_access";
 const REFRESH_KEY = "vetmvp_refresh";
 const FORUM_VISITOR_KEY = "vetmvp_forum_visitor";
 
+/**
+ * UUID v4 без `crypto.randomUUID()`: на HTTP (не localhost) часто нет secure context,
+ * и `randomUUID` в браузере отсутствует — тогда гостю падает тема форума.
+ */
+function randomUuidV4Browser(): string {
+  const c = typeof globalThis !== "undefined" ? (globalThis.crypto as Crypto | undefined) : undefined;
+  if (c && typeof c.randomUUID === "function") {
+    return c.randomUUID();
+  }
+  if (c && typeof c.getRandomValues === "function") {
+    const buf = new Uint8Array(16);
+    c.getRandomValues(buf);
+    buf[6] = (buf[6] & 0x0f) | 0x40;
+    buf[8] = (buf[8] & 0x3f) | 0x80;
+    const h = Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  /* Редкий край: без crypto — но формат всё равно v4, иначе backend отклонит лайк гостя. */
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0;
+    const v = ch === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 /** Стабильный UUID для учёта уникальных просмотров тем без авторизации. */
 export function getOrCreateForumVisitorId(): string {
   try {
@@ -23,7 +48,7 @@ export function getOrCreateForumVisitorId(): string {
   } catch {
     /* SSR / запрет storage */
   }
-  const id = crypto.randomUUID();
+  const id = randomUuidV4Browser();
   try {
     localStorage.setItem(FORUM_VISITOR_KEY, id);
   } catch {
