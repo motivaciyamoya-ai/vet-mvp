@@ -387,12 +387,16 @@ export default function ForumTopicDetail() {
 
   /** Кнопка «решение» только для сообщений других пользователей, не своих доп. постов автора темы */
   function replyCanBeChosenAsSolution(reply: (typeof replies)[number]): boolean {
-    if (!t.author?.id || !reply.author?.id) {
-      const a = reply.author.email.trim().toLowerCase();
-      const b = t.author.email.trim().toLowerCase();
-      return a !== b;
+    const threadAuthor = t.author;
+    const replyAuthor = reply.author;
+    if (!threadAuthor || !replyAuthor) return false;
+    if (threadAuthor.id && replyAuthor.id) {
+      return replyAuthor.id !== threadAuthor.id;
     }
-    return reply.author.id !== t.author.id;
+    const replyEmail = replyAuthor.email?.trim().toLowerCase() ?? "";
+    const threadEmail = threadAuthor.email?.trim().toLowerCase() ?? "";
+    if (!replyEmail || !threadEmail) return false;
+    return replyEmail !== threadEmail;
   }
   const hasOthersReplies = replies.some(replyCanBeChosenAsSolution);
   const authorCanPickSolution =
