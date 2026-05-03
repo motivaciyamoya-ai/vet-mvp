@@ -81,27 +81,24 @@ export class VetEventsService implements OnApplicationBootstrap {
 
   /** Частичное обновление: поля можно не передавать. */
   async putSourcesConfig(icsText?: string, rssText?: string): Promise<{ icsText: string; rssText: string }> {
-    // Prisma.$transaction(array) принимает только PrismaPromise[], не обычные Promise.
-    const ops = [];
-    if (icsText !== undefined) {
-      ops.push(
-        this.prisma.siteSetting.upsert({
-          where: { key: SETTING_EVENTS_ICS },
-          update: { value: icsText },
-          create: { key: SETTING_EVENTS_ICS, value: icsText },
-        }),
-      );
+    if (icsText !== undefined || rssText !== undefined) {
+      await this.prisma.$transaction(async (tx) => {
+        if (icsText !== undefined) {
+          await tx.siteSetting.upsert({
+            where: { key: SETTING_EVENTS_ICS },
+            update: { value: icsText },
+            create: { key: SETTING_EVENTS_ICS, value: icsText },
+          });
+        }
+        if (rssText !== undefined) {
+          await tx.siteSetting.upsert({
+            where: { key: SETTING_EVENTS_RSS },
+            update: { value: rssText },
+            create: { key: SETTING_EVENTS_RSS, value: rssText },
+          });
+        }
+      });
     }
-    if (rssText !== undefined) {
-      ops.push(
-        this.prisma.siteSetting.upsert({
-          where: { key: SETTING_EVENTS_RSS },
-          update: { value: rssText },
-          create: { key: SETTING_EVENTS_RSS, value: rssText },
-        }),
-      );
-    }
-    if (ops.length > 0) await this.prisma.$transaction(ops);
     return this.getSourcesConfig();
   }
 
