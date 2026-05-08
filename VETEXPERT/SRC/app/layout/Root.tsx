@@ -48,7 +48,7 @@ function RootContent() {
   const { language } = useLanguage();
   const { balance, currencyDisplayName } = useVetPoints();
   const { unreadCount } = useNotifications();
-  const { logout, isAuthenticated, authReady } = useAuth();
+  const { user, logout, isAuthenticated, authReady } = useAuth();
   const [siteSeo, setSiteSeo] = useState<PublicSiteSeoDto | null>(null);
   const [maintenance, setMaintenance] = useState<PublicMaintenanceDto | null>(null);
 
@@ -232,7 +232,8 @@ function RootContent() {
 
   const maintenanceOn = maintenance?.enabled === true;
   const allowDuringMaintenance =
-    loc.pathname.startsWith("/admin") || loc.pathname.startsWith("/login");
+    loc.pathname.startsWith("/login") ||
+    (loc.pathname.startsWith("/admin") && user?.role === "ADMIN");
 
   if (maintenanceOn && !allowDuringMaintenance) {
     return <MaintenancePage title={maintenance?.title ?? "Технические работы"} message={maintenance?.message ?? ""} />;

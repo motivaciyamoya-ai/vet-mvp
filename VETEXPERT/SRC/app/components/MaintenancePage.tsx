@@ -11,9 +11,17 @@ export default function MaintenancePage(props: { title: string; message: string 
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{props.title}</h1>
             <p className="mt-3 text-white/85 leading-relaxed">{props.message}</p>
-            <p className="mt-5 text-xs text-white/60">
-              Если вы администратор — откройте <span className="font-mono">/admin</span>, чтобы отключить режим техработ.
-            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <a
+                href="/login"
+                className="inline-flex items-center justify-center rounded-lg bg-emerald-500/90 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+              >
+                Войти для администратора
+              </a>
+              <span className="text-xs text-white/60">
+                Доступ в админку во время техработ доступен только ADMIN.
+              </span>
+            </div>
           </div>
         </div>
       </div>
