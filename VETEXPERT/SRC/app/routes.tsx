@@ -25,6 +25,7 @@ import AdminReference from "./admin/AdminReference";
 import AdminPush from "./admin/AdminPush";
 import AdminSettings from "./admin/AdminSettings";
 import AdminSeo from "./admin/AdminSeo";
+import AdminMaintenance from "./admin/AdminMaintenance";
 import AdminVetCoins from "./admin/AdminVetCoins";
 import AdminDosageDrugs from "./admin/AdminDosageDrugs";
 import AdminEvents from "./admin/AdminEvents";
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: "push", Component: AdminPush },
+      { path: "maintenance", Component: AdminMaintenance },
       { path: "seo", Component: AdminSeo },
       { path: "settings", Component: AdminSettings },
       { path: "vetcoins", Component: AdminVetCoins },

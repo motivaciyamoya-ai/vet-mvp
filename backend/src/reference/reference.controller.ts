@@ -25,6 +25,12 @@ export class ReferenceController {
     return this.ref.getPublicSiteSeo();
   }
 
+  /** Режим технических работ (ключи `site.maintenance.*` в SiteSetting). Без авторизации. */
+  @Get('maintenance')
+  maintenance() {
+    return this.ref.getPublicMaintenance();
+  }
+
   @Get('job-titles')
   jobTitles() {
     return this.ref.jobTitles();

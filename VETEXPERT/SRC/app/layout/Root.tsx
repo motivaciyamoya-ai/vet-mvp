@@ -29,8 +29,15 @@ import { VetPointsProvider, useVetPoints } from "../contexts/VetPointsContext";
 import { NotificationProvider, useNotifications } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { FORUM_NEW_HOT_PATH } from "../../lib/forumHotTopicPath";
-import { apiDirectUnreadSummary, apiReferenceSiteSeo, type PublicSiteSeoDto } from "../../lib/api";
+import {
+  apiDirectUnreadSummary,
+  apiReferenceMaintenance,
+  apiReferenceSiteSeo,
+  type PublicMaintenanceDto,
+  type PublicSiteSeoDto,
+} from "../../lib/api";
 import { applyClientDocumentSeo, SITE_SEO_FALLBACK } from "../../lib/documentSeo";
+import MaintenancePage from "../components/MaintenancePage";
 
 function RootContent() {
   const navigate = useNavigate();
@@ -43,6 +50,7 @@ function RootContent() {
   const { unreadCount } = useNotifications();
   const { logout, isAuthenticated, authReady } = useAuth();
   const [siteSeo, setSiteSeo] = useState<PublicSiteSeoDto | null>(null);
+  const [maintenance, setMaintenance] = useState<PublicMaintenanceDto | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -163,6 +171,20 @@ function RootContent() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    apiReferenceMaintenance()
+      .then((r) => {
+        if (!cancelled) setMaintenance(r);
+      })
+      .catch(() => {
+        if (!cancelled) setMaintenance(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     let wentHidden = false;
     const onVis = () => {
       if (document.visibilityState === "hidden") {
@@ -173,6 +195,9 @@ function RootContent() {
         wentHidden = false;
         apiReferenceSiteSeo()
           .then((r) => setSiteSeo(r))
+          .catch(() => {});
+        apiReferenceMaintenance()
+          .then((r) => setMaintenance(r))
           .catch(() => {});
       }
     };
@@ -204,6 +229,14 @@ function RootContent() {
       clearInterval(id);
     };
   }, [authReady, isAuthenticated]);
+
+  const maintenanceOn = maintenance?.enabled === true;
+  const allowDuringMaintenance =
+    loc.pathname.startsWith("/admin") || loc.pathname.startsWith("/login");
+
+  if (maintenanceOn && !allowDuringMaintenance) {
+    return <MaintenancePage title={maintenance?.title ?? "Технические работы"} message={maintenance?.message ?? ""} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

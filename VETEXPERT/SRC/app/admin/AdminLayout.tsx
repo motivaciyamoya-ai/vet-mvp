@@ -16,6 +16,7 @@ import {
   Coins,
   Pill,
   CalendarDays,
+  Wrench,
   Share2,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -152,6 +153,10 @@ export default function AdminLayout() {
           <NavLink to="/admin/vetcoins" className={linkClass}>
             <Coins className="w-4 h-4 shrink-0" />
             VetCoin
+          </NavLink>
+          <NavLink to="/admin/maintenance" className={linkClass}>
+            <Wrench className="w-4 h-4 shrink-0" />
+            Техработы
           </NavLink>
           <NavLink to="/admin/seo" className={linkClass}>
             <Share2 className="w-4 h-4 shrink-0" />

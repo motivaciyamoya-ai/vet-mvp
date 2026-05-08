@@ -286,4 +286,39 @@ export class ReferenceService {
       twitterCard,
     };
   }
+
+  async getPublicMaintenance(): Promise<{
+    enabled: boolean;
+    title: string;
+    message: string;
+    updatedAt: string | null;
+  }> {
+    const keys = [
+      'site.maintenance.enabled',
+      'site.maintenance.title',
+      'site.maintenance.message',
+    ] as const;
+
+    const rows = await this.prisma.siteSetting.findMany({
+      where: { key: { in: [...keys] } },
+      select: { key: true, value: true, updatedAt: true },
+    });
+    const map = new Map(rows.map((r) => [r.key, r]));
+
+    const enabledRaw = (map.get('site.maintenance.enabled')?.value ?? '').trim().toLowerCase();
+    const enabled = enabledRaw === '1' || enabledRaw === 'true' || enabledRaw === 'on' || enabledRaw === 'yes';
+
+    const title = (map.get('site.maintenance.title')?.value ?? '').trim() || 'Технические работы';
+    const message =
+      (map.get('site.maintenance.message')?.value ?? '').trim() ||
+      'Мы обновляем сервис. Пожалуйста, зайдите чуть позже.';
+
+    const updatedAt =
+      map.get('site.maintenance.enabled')?.updatedAt?.toISOString?.() ??
+      map.get('site.maintenance.title')?.updatedAt?.toISOString?.() ??
+      map.get('site.maintenance.message')?.updatedAt?.toISOString?.() ??
+      null;
+
+    return { enabled, title, message, updatedAt };
+  }
 }

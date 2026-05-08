@@ -449,6 +449,17 @@ export async function apiReferenceSiteSeo(): Promise<PublicSiteSeoDto> {
   return apiFetch<PublicSiteSeoDto>("/api/reference/seo");
 }
 
+export type PublicMaintenanceDto = {
+  enabled: boolean;
+  title: string;
+  message: string;
+  updatedAt: string | null;
+};
+
+export async function apiReferenceMaintenance(): Promise<PublicMaintenanceDto> {
+  return apiFetch<PublicMaintenanceDto>("/api/reference/maintenance");
+}
+
 export async function apiListingsList(pageSize = 100) {
   return apiFetch<{ items: ApiListingSummary[]; total: number }>(
     `/api/listings?page=1&pageSize=${encodeURIComponent(String(pageSize))}`,
