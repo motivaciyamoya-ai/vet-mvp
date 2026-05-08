@@ -11,6 +11,7 @@ import {
   clearTokens,
   getRefreshToken,
   setTokens,
+  setAccessToken,
 } from "../../lib/api";
 import type { PublicModerationDto } from "../../lib/moderationUi";
 
@@ -44,16 +45,18 @@ export interface User {
   birthDate?: string | null;
   role?: string;
   emailVerified?: boolean;
+  totpEnabled?: boolean;
   /** Публичное состояние модерации аккаунта (бейджи/баннер совпадают с API). */
   moderation?: PublicModerationDto;
 }
 
 /** Результат входа/регистрации: либо успех, либо текст для показа пользователю (не глотать сеть/валидацию). */
-export type AuthActionResult = { ok: true } | { ok: false; error: string };
+export type AuthActionResult = { ok: true } | { ok: false; error: string; needTotp?: boolean };
 
 interface AuthTokensResponse {
   accessToken: string;
-  refreshToken: string;
+  /** Может отсутствовать, если refresh только в httpOnly-cookie. */
+  refreshToken?: string;
 }
 
 interface LoginRegisterResponse extends AuthTokensResponse {
@@ -65,6 +68,7 @@ interface MeResponse {
   email: string;
   role: string;
   emailVerified: boolean;
+  totpEnabled?: boolean;
   createdAt?: string;
   stats?: User["stats"];
   moderation: PublicModerationDto;
@@ -101,6 +105,7 @@ function mapMe(me: MeResponse): User {
           : new Date(me.profile.birthDate as Date).toISOString().slice(0, 10),
     role: me.role,
     emailVerified: me.emailVerified,
+    totpEnabled: me.totpEnabled ?? false,
     moderation: me.moderation,
   };
 }
@@ -124,7 +129,7 @@ interface AuthContextType {
   user: User | null;
   authReady: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<AuthActionResult>;
+  login: (email: string, password: string, totpCode?: string) => Promise<AuthActionResult>;
   register: (userData: RegisterPayload) => Promise<AuthActionResult>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
@@ -184,13 +189,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [hydrateUser]);
 
-  const login = async (email: string, password: string): Promise<AuthActionResult> => {
+  const login = async (email: string, password: string, totpCode?: string): Promise<AuthActionResult> => {
     try {
       const res = await apiFetch<LoginRegisterResponse>("/api/auth/login", {
         method: "POST",
-        json: { email: email.trim(), password },
+        json: { email: email.trim(), password, ...(totpCode?.trim() ? { totpCode: totpCode.trim() } : {}) },
       });
-      setTokens(res.accessToken, res.refreshToken);
+      if (res.refreshToken) setTokens(res.accessToken, res.refreshToken);
+      else setAccessToken(res.accessToken);
       setUser(null);
       try {
         await hydrateUser();
@@ -209,6 +215,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: true };
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
+      if (raw === "TOTP_REQUIRED") {
+        return { ok: false, error: "", needTotp: true };
+      }
       return { ok: false, error: humanizeClientError(raw) };
     }
   };
@@ -228,7 +237,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           policyAccepted: payload.policyAccepted,
         },
       });
-      setTokens(res.accessToken, res.refreshToken);
+      if (res.refreshToken) setTokens(res.accessToken, res.refreshToken);
+      else setAccessToken(res.accessToken);
       setUser(null);
       try {
         await hydrateUser();

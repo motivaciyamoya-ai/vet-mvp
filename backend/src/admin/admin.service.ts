@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ListingType, Prisma, SosStatus } from '@prisma/client';
+import { ListingType, Prisma, SosStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { VetcoinService } from '../vetcoin/vetcoin.service';
@@ -31,6 +31,9 @@ import {
 import { AdminPatchUserDto } from './dto/admin-users.dto';
 import { AdminPatchReportDto } from './dto/admin-misc.dto';
 import { ModerationService } from '../moderation/moderation.service';
+import { AuditService } from '../audit/audit.service';
+import { AlertsService } from '../alerts/alerts.service';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 
 @Injectable()
 export class AdminService {
@@ -38,6 +41,8 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly vetcoin: VetcoinService,
     private readonly moderation: ModerationService,
+    private readonly audit: AuditService,
+    private readonly alerts: AlertsService,
   ) {}
 
   private paginate(page: number, pageSize: number) {
@@ -124,12 +129,19 @@ export class AdminService {
     });
   }
 
-  async patchUser(id: string, dto: AdminPatchUserDto) {
+  async patchUser(
+    id: string,
+    dto: AdminPatchUserDto,
+    actor: AuthUser,
+    meta?: { ip?: string; userAgent?: string },
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       include: { profile: true },
     });
     if (!user) throw new NotFoundException();
+
+    const prevRole = user.role;
 
     if (dto.email && dto.email !== user.email) {
       const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
@@ -149,6 +161,20 @@ export class AdminService {
         ...(passwordHash ? { passwordHash } : {}),
       },
     });
+
+    if (dto.role !== undefined && dto.role !== prevRole) {
+      await this.audit.log({
+        action: 'admin.user.role_change',
+        actorUserId: actor.id,
+        actorEmail: actor.email,
+        details: { targetUserId: id, targetEmail: user.email, from: prevRole, to: dto.role },
+        ip: meta?.ip,
+        userAgent: meta?.userAgent,
+      });
+      if (dto.role === UserRole.ADMIN) {
+        void this.alerts.notifyRoleAdmin(user.email, actor.email);
+      }
+    }
 
     const profilePatch: Prisma.ProfileUpdateInput = {};
     if (dto.displayName !== undefined) profilePatch.displayName = dto.displayName;

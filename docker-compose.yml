@@ -7,8 +7,9 @@ services:
       POSTGRES_DB: vetmvp
     volumes:
       - vet_pg_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    networks:
+      - stack
+    # Порт 5432 не публикуем на хост — только внутренняя сеть stack.
 
   backend:
     build:
@@ -17,6 +18,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://vet:vet@postgres:5432/vetmvp
+      TRUST_PROXY: "1"
       # Если вы используете JWT/SMTP/Push — заполните эти значения в .env (см backend/.env.example)
       AI_PROVIDER: ollama
       OLLAMA_BASE_URL: http://ollama:11434
@@ -24,18 +26,18 @@ services:
     depends_on:
       - postgres
       - ollama
-    ports:
-      - "3000:3000"
     volumes:
       - backend_uploads:/app/uploads
+    networks:
+      - stack
+    # API снаружи только через контейнер web (nginx) и NPM.
 
   ollama:
     image: ollama/ollama:latest
     volumes:
       - ollama_data:/root/.ollama
-    # В идеале без публикации порта наружу (backend ходит по docker-сети)
-    # ports:
-    #   - "11434:11434"
+    networks:
+      - stack
 
   web:
     build:
@@ -45,7 +47,7 @@ services:
     ports:
       - "127.0.0.1:8080:80"
     networks:
-      default:
+      stack: {}
       proxy:
         aliases:
           - web
@@ -56,6 +58,8 @@ volumes:
   ollama_data:
 
 networks:
+  stack:
+    driver: bridge
   proxy:
     external: true
 

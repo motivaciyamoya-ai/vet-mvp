@@ -455,12 +455,8 @@ export default function AdminDosageDrugs() {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                    В базе пока нет препаратов. Нажмите «Подтянуть встроенный справочник» (нужны файлы из{" "}
-                    <code className="bg-slate-100 px-1 rounded text-xs">npm run sync-dosage-vendor</code> при первом
-                    запуске) или в каталоге{" "}
-                    <code className="bg-slate-100 px-1 rounded text-xs">backend</code> выполните{" "}
-                    <code className="bg-slate-100 px-1 rounded text-xs">npm run seed</code>. Также можно добавить
-                    запись через «Новый препарат».
+                    В справочнике пока нет препаратов. Нажмите «Подтянуть встроенный справочник» или добавьте запись
+                    через «Новый препарат».
                   </td>
                 </tr>
               ) : (

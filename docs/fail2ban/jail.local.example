@@ -1,0 +1,22 @@
+# /etc/fail2ban/jail.local — пример (скопируйте и поправьте пути логов)
+
+[DEFAULT]
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+destemail = admin@example.com
+sender     = fail2ban@example.com
+action     = %(action_mwl)s
+
+[sshd]
+enabled = true
+port    = 22222
+logpath = %(sshd_log)s
+
+# NPM: путь к access.log зависит от установки (часто /data/logs/proxy-host-*_access.log или docker logs)
+[npm-auth]
+enabled = false
+filter  = npm-auth
+logpath = /path/to/npm/access.log
+maxretry = 10
+findtime = 5m

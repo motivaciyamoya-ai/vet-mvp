@@ -10,6 +10,8 @@ export default function Login() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [needTotp, setNeedTotp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -18,9 +20,10 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setNeedTotp(false);
 
     try {
-      const result = await login(email, password);
+      const result = await login(email, password, totpCode.trim() || undefined);
       if (result.ok) {
         const maintenance = await apiReferenceMaintenance().catch(() => null);
         const from = (location.state as { from?: string } | null)?.from;
@@ -31,7 +34,12 @@ export default function Login() {
         }
         navigate(safe ?? "/");
       } else {
-        setError(result.error);
+        if (result.needTotp) {
+          setNeedTotp(true);
+          setError("Для этого аккаунта включена двухфакторная аутентификация. Введите 6‑значный код из приложения.");
+        } else {
+          setError(result.error);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Произошла ошибка. Попробуйте снова.");
@@ -102,6 +110,29 @@ export default function Login() {
               </div>
             </div>
 
+            {/* TOTP */}
+            {needTotp ? (
+              <div>
+                <label htmlFor="totp" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Код 2FA (TOTP)
+                </label>
+                <input
+                  id="totp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value)}
+                  placeholder="123456"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Откройте Google Authenticator / 1Password / Authy и введите текущий код.
+                </p>
+              </div>
+            ) : null}
+
             {/* Error */}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -156,10 +187,8 @@ export default function Login() {
             ) : (
               <>
                 <p className="text-gray-500 text-xs leading-relaxed">
-                  <span className="font-semibold">DEV:</span> демо-вход может быть доступен локально после{" "}
-                  <span className="font-mono">npm run seed</span> на API. Пример:{" "}
-                  <span className="font-mono">vet@vetmvp.local</span> /{" "}
-                  <span className="font-mono font-semibold">Demo123!</span>
+                  <span className="font-semibold">DEV:</span> демо-вход может быть доступен локально после подготовки
+                  данных на API.
                 </p>
                 <details className="text-left text-xs text-gray-600 border border-gray-100 rounded-lg p-3 bg-gray-50">
                   <summary className="cursor-pointer font-semibold text-gray-700">Не входит? Локальная проверка</summary>

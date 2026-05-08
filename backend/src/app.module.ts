@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { SecurityModule } from './security/security.module';
+import { AuditModule } from './audit/audit.module';
+import { AlertsModule } from './alerts/alerts.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -31,8 +34,12 @@ import { AiToolsModule } from './ai-tools/ai-tools.module';
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 1000, limit: 20 },
       { name: 'medium', ttl: 60000, limit: 120 },
+      { name: 'login', ttl: 60_000, limit: 10 },
     ]),
     PrismaModule,
+    SecurityModule,
+    AuditModule,
+    AlertsModule,
     AuthModule,
     UsersModule,
     ReferenceModule,

@@ -7,6 +7,7 @@ import {
 import { CHAT_MESSAGES_RETENTION_LIMIT } from '../chat-retention.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { SecurityPoliciesService } from '../security/security-policies.service';
 
 /** Грубое снятие разметки Markdown для превью в списке диалогов */
 function stripMarkdownish(input: string): string {
@@ -55,6 +56,7 @@ export class DirectMessagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
+    private readonly securityPolicies: SecurityPoliciesService,
   ) {}
 
   private normalizedPair(userA: string, userB: string): [string, string] {
@@ -165,6 +167,7 @@ export class DirectMessagesService {
   private async sendRaw(conversationId: string, senderId: string, recipientId: string, body: string) {
     const trimmed = body.trim();
     if (!trimmed) throw new BadRequestException('Пустое сообщение');
+    await this.securityPolicies.assertUserVerifiedForContent(senderId);
 
     const limit = CHAT_MESSAGES_RETENTION_LIMIT;
     const msg = await this.prisma.$transaction(async (tx) => {

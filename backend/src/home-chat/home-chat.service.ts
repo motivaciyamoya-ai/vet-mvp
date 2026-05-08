@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { CHAT_MESSAGES_RETENTION_LIMIT } from '../chat-retention.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { SecurityPoliciesService } from '../security/security-policies.service';
 
 const TAKE = 48;
 
@@ -13,6 +14,7 @@ export class HomeChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
+    private readonly securityPolicies: SecurityPoliciesService,
   ) {}
 
   async listMessages(viewerId: string) {
@@ -69,6 +71,7 @@ export class HomeChatService {
   async postMessage(userId: string, bodyRaw: string) {
     const body = bodyRaw.replace(/\r\n/g, '\n').trim();
     if (!body.length) throw new BadRequestException('Пустое сообщение');
+    await this.securityPolicies.assertUserVerifiedForContent(userId);
 
     const limit = CHAT_MESSAGES_RETENTION_LIMIT;
     const msg = await this.prisma.$transaction(async (tx) => {

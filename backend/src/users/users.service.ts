@@ -41,6 +41,7 @@ export class UsersService {
         email: true,
         role: true,
         emailVerified: true,
+        totpEnabled: true,
         vetCoinBalance: true,
         createdAt: true,
         moderationStatus: true,
@@ -65,7 +66,7 @@ export class UsersService {
     if (!user) throw new NotFoundException('Пользователь не найден');
     if (!user.profile) {
       throw new BadRequestException(
-        'У этого аккаунта нет профиля в БД. Запустите npm run seed в каталоге backend или создайте Profile вручную.',
+        'Профиль пользователя не найден. Обратитесь в поддержку или повторите попытку позже.',
       );
     }
 

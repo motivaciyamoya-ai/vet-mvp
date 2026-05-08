@@ -62,6 +62,10 @@ export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_KEY);
 }
 
+export function setAccessToken(access: string) {
+  localStorage.setItem(ACCESS_KEY, access);
+}
+
 export function setTokens(access: string, refresh: string) {
   localStorage.setItem(ACCESS_KEY, access);
   localStorage.setItem(REFRESH_KEY, refresh);
@@ -114,6 +118,7 @@ export async function apiFetch<T>(
   }
   const res = await fetch(apiUrl(path), {
     ...rest,
+    credentials: rest.credentials ?? "include",
     headers: h,
     body: json !== undefined ? JSON.stringify(json) : rest.body,
   });
@@ -161,7 +166,7 @@ async function apiMultipartJson<T extends { url: string }>(
   if (token) {
     h.set("Authorization", `Bearer ${token}`);
   }
-  const res = await fetch(apiUrl(path), { method: "POST", headers: h, body: fd });
+  const res = await fetch(apiUrl(path), { method: "POST", headers: h, body: fd, credentials: "include" });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(extractApiErrorMessage(res, text) || `HTTP ${res.status}`);
@@ -184,7 +189,10 @@ function extractApiErrorMessage(res: Response, text: string): string {
   // Nest обычно отвечает JSON вида { message, statusCode }.
   try {
     const parsed = JSON.parse(raw) as { message?: string | string[] };
-    if (typeof parsed?.message === "string") return parsed.message;
+    if (typeof parsed?.message === "string") {
+      if (res.status === 403 && parsed.message === "TOTP_REQUIRED") return "TOTP_REQUIRED";
+      return parsed.message;
+    }
     if (Array.isArray(parsed?.message)) return parsed.message.join(", ");
   } catch {
     /* keep raw */
@@ -664,7 +672,12 @@ export async function apiMedicalAnalyzerAnalyze(input: {
   const token = getAccessToken();
   const h = new Headers();
   if (token) h.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(apiUrl("/api/ai/medical-analyzer"), { method: "POST", headers: h, body: fd });
+  const res = await fetch(apiUrl("/api/ai/medical-analyzer"), {
+    method: "POST",
+    headers: h,
+    body: fd,
+    credentials: "include",
+  });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(extractApiErrorMessage(res, text) || `HTTP ${res.status}`);

@@ -9,8 +9,10 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ListingType, UserRole } from '@prisma/client';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -52,11 +54,15 @@ import {
 } from '../dosage-drugs/dto/admin-dosage-drug.dto';
 import { AdminCreateManualVetEventDto, AdminVetEventsSourcesDto } from './dto/admin-events.dto';
 import { LiveTrafficService } from '../live-traffic/live-traffic.service';
+import { AuditService } from '../audit/audit.service';
+import { AlertsService } from '../alerts/alerts.service';
+import { SecurityPoliciesService } from '../security/security-policies.service';
+import { AdminTotpGuard } from './guards/admin-totp.guard';
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @SkipThrottle()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, AdminTotpGuard)
 @Roles(UserRole.ADMIN)
 @Controller('admin')
 export class AdminController {
@@ -66,6 +72,9 @@ export class AdminController {
     private readonly dosageDrugs: DosageDrugsService,
     private readonly vetEvents: VetEventsService,
     private readonly liveTraffic: LiveTrafficService,
+    private readonly audit: AuditService,
+    private readonly alerts: AlertsService,
+    private readonly policies: SecurityPoliciesService,
   ) {}
 
   @Get('stats')
@@ -98,13 +107,47 @@ export class AdminController {
   }
 
   @Put('settings/:key')
-  putSiteSetting(@Param('key') key: string, @Body() dto: AdminPutSiteSettingDto) {
-    return this.dashboard.putSiteSetting(decodeURIComponent(key), dto.value);
+  async putSiteSetting(
+    @Param('key') key: string,
+    @Body() dto: AdminPutSiteSettingDto,
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+  ) {
+    const k = decodeURIComponent(key);
+    const row = await this.dashboard.putSiteSetting(k, dto.value);
+    await this.audit.log({
+      action: 'admin.site_setting.put',
+      actorUserId: user.id,
+      actorEmail: user.email,
+      details: { key: k },
+      ip: req.ip,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+    });
+    if (k === 'site.maintenance.enabled' && dto.value.trim().toLowerCase() === 'true') {
+      void this.alerts.notifyMaintenanceEnabled(user.email);
+    }
+    if (k.startsWith('site.security.')) {
+      this.policies.invalidateCache();
+    }
+    return row;
   }
 
   @Delete('settings/:key')
-  deleteSiteSetting(@Param('key') key: string) {
-    return this.dashboard.deleteSiteSetting(decodeURIComponent(key));
+  async deleteSiteSetting(@Param('key') key: string, @CurrentUser() user: AuthUser, @Req() req: Request) {
+    const k = decodeURIComponent(key);
+    const out = await this.dashboard.deleteSiteSetting(k);
+    await this.audit.log({
+      action: 'admin.site_setting.delete',
+      actorUserId: user.id,
+      actorEmail: user.email,
+      details: { key: k },
+      ip: req.ip,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+    });
+    if (k.startsWith('site.security.')) {
+      this.policies.invalidateCache();
+    }
+    return out;
   }
 
   /** Ручной запуск подтягивания мероприятий из ICS/RSS (см. settings events.sources.*). */
@@ -161,8 +204,16 @@ export class AdminController {
   }
 
   @Patch('users/:id')
-  patchUser(@Param('id') id: string, @Body() dto: AdminPatchUserDto) {
-    return this.admin.patchUser(id, dto);
+  patchUser(
+    @Param('id') id: string,
+    @Body() dto: AdminPatchUserDto,
+    @CurrentUser() actor: AuthUser,
+    @Req() req: Request,
+  ) {
+    return this.admin.patchUser(id, dto, actor, {
+      ip: req.ip,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+    });
   }
 
   @Delete('users/:id')

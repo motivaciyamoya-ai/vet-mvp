@@ -1,19 +1,25 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
-  @ApiProperty({ example: 'vet@vetmvp.local' })
+  @ApiProperty({ example: 'user@example.com' })
   @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
-  /** Стандартный @IsEmail часто режет локальные домены вида @vetmvp.local — для демо и внутренних адресов смягчаем. */
+  /** Достаточно строгая проверка формата email без утечек внутренних доменов/примеров. */
   @Matches(/^[^\s@]+@[^\s@]+$/, {
-    message: 'Введите email адрес вида имя@домен (напр. vet@vetmvp.local)',
+    message: 'Введите корректный email адрес (например user@example.com)',
   })
   @MaxLength(254)
   email: string;
 
-  @ApiProperty({ example: 'Demo123!' })
+  @ApiProperty({ example: '********' })
   @IsString()
   @MinLength(8)
   password: string;
+
+  @ApiPropertyOptional({ description: 'Код TOTP, если для аккаунта включена 2FA' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{6}$/)
+  totpCode?: string;
 }

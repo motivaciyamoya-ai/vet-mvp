@@ -14,6 +14,7 @@ import { createHash } from 'crypto';
 import ical from 'node-ical';
 import Parser from 'rss-parser';
 import { randomUUID } from 'crypto';
+import { assertPublicHttpUrl } from '../common/url-ssrf.util';
 
 const SETTING_EVENTS_ICS = 'events.sources.ics';
 const SETTING_EVENTS_RSS = 'events.sources.rss';
@@ -409,6 +410,7 @@ export class VetEventsService implements OnApplicationBootstrap {
   }
 
   private async fetchText(url: string): Promise<string> {
+    assertPublicHttpUrl(url, 'URL фида');
     const res = await fetch(url, {
       headers: {
         Accept: 'text/calendar,text/plain,application/rss+xml,text/xml,*/*',

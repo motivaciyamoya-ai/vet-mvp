@@ -12,6 +12,7 @@ import { UpdateThreadOpeningDto } from './dto/update-thread-opening.dto';
 import { UpdateForumPostDto } from './dto/update-forum-post.dto';
 import { VetcoinService } from '../vetcoin/vetcoin.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { SecurityPoliciesService } from '../security/security-policies.service';
 
 /** Маркер в тегах: `URGENCY:medium|high|critical` — с сервера снимается стоимость горячей темы. */
 function parseHotUrgency(tags: string): {
@@ -83,6 +84,7 @@ export class ForumService {
     private readonly prisma: PrismaService,
     private readonly vetcoin: VetcoinService,
     private readonly moderation: ModerationService,
+    private readonly securityPolicies: SecurityPoliciesService,
   ) {}
 
   categories() {
@@ -400,6 +402,7 @@ export class ForumService {
     const cat = await this.prisma.forumCategory.findUnique({ where: { id: dto.categoryId } });
     if (!cat) throw new NotFoundException('Категория не найдена');
     await this.moderation.maybeClearExpiredSanctions(userId);
+    await this.securityPolicies.assertUserVerifiedForContent(userId);
 
     const rawTags = dto.tags ?? '';
     const { urgency, rest } = parseHotUrgency(rawTags);
@@ -464,6 +467,7 @@ export class ForumService {
     const thread = await this.prisma.forumThread.findUnique({ where: { id: threadId } });
     if (!thread) throw new NotFoundException();
     this.assertForumThreadOpen(thread);
+    await this.securityPolicies.assertUserVerifiedForContent(userId);
     await this.prisma.forumPost.create({
       data: { threadId, authorId: userId, body: dto.body },
     });

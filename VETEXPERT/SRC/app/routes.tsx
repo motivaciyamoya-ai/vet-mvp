@@ -29,6 +29,7 @@ import AdminMaintenance from "./admin/AdminMaintenance";
 import AdminVetCoins from "./admin/AdminVetCoins";
 import AdminDosageDrugs from "./admin/AdminDosageDrugs";
 import AdminEvents from "./admin/AdminEvents";
+import AdminSecurity from "./admin/AdminSecurity";
 import UserPublicProfile from "./pages/UserPublicProfile";
 import MessagesPage from "./pages/MessagesPage";
 import ArticleDetail from "./pages/ArticleDetail";
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
       { path: "seo", Component: AdminSeo },
       { path: "settings", Component: AdminSettings },
       { path: "vetcoins", Component: AdminVetCoins },
+      { path: "security", Component: AdminSecurity },
     ],
   },
   {

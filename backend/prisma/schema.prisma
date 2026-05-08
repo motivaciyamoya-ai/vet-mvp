@@ -116,6 +116,27 @@ model User {
   /// Ссылка на последнюю «жалобу-решение», из которой взяты публичные пояснения (опционально).
   lastSanctionReportId String? @unique
   lastSanctionReport   Report? @relation("UserLastSanctionReport", fields: [lastSanctionReportId], references: [id], onDelete: SetNull)
+
+  /// Base32-секрет TOTP (храните БД вне публичных бэкапов без шифрования диска).
+  totpSecret  String?
+  totpEnabled Boolean @default(false)
+
+  auditLogs AuditLog[] @relation("AuditActor")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  actorUserId String?
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorEmail  String?
+  action      String
+  details     Json?
+  ip          String?
+  userAgent   String?
+
+  @@index([createdAt])
+  @@index([action])
 }
 
 model ProfileThank {

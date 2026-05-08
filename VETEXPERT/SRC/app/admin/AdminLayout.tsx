@@ -72,12 +72,7 @@ export default function AdminLayout() {
             <strong>{user.role}</strong>. Нужна роль <strong>ADMIN</strong>.
           </p>
           <p className="text-sm text-slate-500 mt-4">
-            Выполните <code className="bg-slate-100 px-1 rounded">npm run seed</code> в{" "}
-            <code className="bg-slate-100 px-1 rounded">backend</code>, затем выйдите и войдите под{" "}
-            <span className="font-mono">vet@vetmvp.local</span> или{" "}
-            <span className="font-mono">admin@vetmvp.local</span> — пароль{" "}
-            <span className="font-mono">Demo123!</span> Для теста без админа:{" "}
-            <span className="font-mono">specialist@vetmvp.local</span>.
+            Если вы считаете, что это ошибка — обратитесь к администратору сайта для выдачи прав доступа.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 mt-8 justify-center">
             <Link
@@ -157,6 +152,10 @@ export default function AdminLayout() {
           <NavLink to="/admin/maintenance" className={linkClass}>
             <Wrench className="w-4 h-4 shrink-0" />
             Техработы
+          </NavLink>
+          <NavLink to="/admin/security" className={linkClass}>
+            <Shield className="w-4 h-4 shrink-0" />
+            Безопасность
           </NavLink>
           <NavLink to="/admin/seo" className={linkClass}>
             <Share2 className="w-4 h-4 shrink-0" />

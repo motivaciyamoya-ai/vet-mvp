@@ -1,0 +1,6 @@
+# /etc/fail2ban/filter.d/npm-auth.conf
+# Пример: ловить 401 на /api/auth/login (формат лога NPM нужно подогнать под фактический)
+
+[Definition]
+failregex = ^.*"POST /api/auth/login HTTP/.*" 401 .*$
+ignoreregex =
