@@ -1,8 +1,8 @@
-# VetPro CIS / VetExpert MVP — настройте host при продакшене
 User-agent: *
 Allow: /
 
 Disallow: /admin
-Disallow: /api/
+Disallow: /messages
+Disallow: /profile
 
-Sitemap: /sitemap.xml
+Sitemap: https://vetconnect.online/sitemap.xml

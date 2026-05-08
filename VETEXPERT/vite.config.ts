@@ -18,7 +18,7 @@ export default defineConfig({
 
   server: {
     proxy: {
-      // vet-mvp/backend: глобальный префикс /api → та же БД PostgreSQL (Prisma)
+      // Локальная разработка: проксируем /api и /uploads на запущенное API
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,

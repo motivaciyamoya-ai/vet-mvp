@@ -36,7 +36,7 @@ export default function Register() {
         }
       } catch {
         if (!cancelled) {
-          setRefsError("Не удалось загрузить справочники. Запущен ли backend и база?");
+          setRefsError("Не удалось загрузить справочники. Проверьте подключение и попробуйте ещё раз.");
         }
       } finally {
         if (!cancelled) setRefsLoading(false);
@@ -65,7 +65,7 @@ export default function Register() {
     degree: "",
     graduationYear: "",
 
-    // Step 3: Профессиональная информация (должность из БД для POST /auth/register)
+    // Step 3: Профессиональная информация (должность выбирается из справочника)
     jobTitleId: "",
     direction: "",
     experience: "",
@@ -248,7 +248,7 @@ export default function Register() {
                       autoComplete="username"
                       value={formData.email}
                       onChange={(e) => updateField("email", e.target.value)}
-                      placeholder="user@vetmvp.local"
+                      placeholder="email@company.com"
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       required
                     />

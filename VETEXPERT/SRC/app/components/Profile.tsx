@@ -183,7 +183,7 @@ export default function Profile() {
     try {
       await apiFetch("/api/auth/resend-verification", { method: "POST" });
       setVerifyMsg(
-        "Если включён SMTP на сервере — проверьте почту. Иначе ссылка снова в логе backend.",
+        "Если письмо не пришло подождите пару минут, проверьте папку «Спам» и корректность email в профиле.",
       );
     } catch (e: unknown) {
       setVerifyMsg(e instanceof Error ? e.message : "Не удалось отправить");

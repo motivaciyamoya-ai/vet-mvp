@@ -126,7 +126,7 @@ export default function NotificationSettings({ onClose }: NotificationSettingsPr
                 <p className="font-semibold mb-1">Как работают уведомления</p>
                 <ul className="space-y-1 text-xs">
                   <li>• <strong>Браузерные:</strong> Работают когда приложение открыто</li>
-                  <li>• <strong>Push-уведомления:</strong> Требуется backend-сервер (FCM/APNS)</li>
+                  <li>• <strong>Push-уведомления:</strong> Требуется сервис отправки уведомлений (например, FCM/APNS)</li>
                   <li>• <strong>Мобильные:</strong> Нужно установить как PWA приложение</li>
                 </ul>
               </div>
@@ -138,7 +138,7 @@ export default function NotificationSettings({ onClose }: NotificationSettingsPr
                 <p className="font-semibold mb-1">Для реальных push-уведомлений на телефон:</p>
                 <ul className="space-y-1 text-xs">
                   <li>1. Требуется настройка Firebase Cloud Messaging (FCM)</li>
-                  <li>2. Backend-сервер для отправки уведомлений</li>
+                  <li>2. Серверная часть для отправки уведомлений</li>
                   <li>3. Service Worker для фоновой работы</li>
                   <li>4. HTTPS соединение (обязательно)</li>
                 </ul>

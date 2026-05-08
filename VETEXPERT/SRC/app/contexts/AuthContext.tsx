@@ -109,7 +109,10 @@ function humanizeClientError(raw: string): string {
   const t = raw.trim();
   const low = t.toLowerCase();
   if (!t || low.includes("failed to fetch") || low.includes("networkerror") || low.includes("load failed")) {
-    return "Не удалось связаться с API. Обычно backend не запущен или фронт стучится не туда: при `npm run dev` Vite проксирует /api → http://localhost:3000 — там должен работать NestJS.";
+    if (!import.meta.env.DEV) {
+      return "Сервис временно недоступен. Проверьте интернет-соединение и попробуйте снова через несколько минут.";
+    }
+    return "Не удалось связаться с сервером API (локально убедитесь, что dev-прокси /api доступен для NestJS).";
   }
   if (low.includes("неверный email") || low.includes("unauthorized") || low.includes("401")) {
     return "Неверный email или пароль.";
@@ -198,7 +201,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const msg = e instanceof Error ? e.message : String(e);
         return {
           ok: false,
-          error: `Сервер выдал токен, но профиль не загрузился (GET /api/users/me). Проверьте, что у пользователя есть запись Profile в БД. Технически: ${msg}`,
+          error: import.meta.env.DEV
+            ? `Не удалось загрузить профиль после входа. Технически: ${msg}`
+            : "Не удалось загрузить профиль после входа. Попробуйте войти заново через минуту.",
         };
       }
       return { ok: true };

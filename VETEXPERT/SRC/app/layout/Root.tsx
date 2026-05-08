@@ -1,4 +1,4 @@
-import { Link, Outlet, NavLink, useNavigate } from "react-router";
+import { Link, Outlet, NavLink, useLocation, useNavigate } from "react-router";
 import {
   AlertCircle,
   Bell,
@@ -29,10 +29,12 @@ import { VetPointsProvider, useVetPoints } from "../contexts/VetPointsContext";
 import { NotificationProvider, useNotifications } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { FORUM_NEW_HOT_PATH } from "../../lib/forumHotTopicPath";
-import { apiDirectUnreadSummary } from "../../lib/api";
+import { apiDirectUnreadSummary, apiReferenceSiteSeo, type PublicSiteSeoDto } from "../../lib/api";
+import { applyClientDocumentSeo, SITE_SEO_FALLBACK } from "../../lib/documentSeo";
 
 function RootContent() {
   const navigate = useNavigate();
+  const loc = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [dmUnread, setDmUnread] = useState(0);
@@ -40,6 +42,7 @@ function RootContent() {
   const { balance, currencyDisplayName } = useVetPoints();
   const { unreadCount } = useNotifications();
   const { logout, isAuthenticated, authReady } = useAuth();
+  const [siteSeo, setSiteSeo] = useState<PublicSiteSeoDto | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -52,6 +55,7 @@ function RootContent() {
       home: string;
       forum: string;
       articles: string;
+      events: string;
       specialists: string;
       tools: string;
       marketplace: string;
@@ -143,6 +147,42 @@ function RootContent() {
     authReady && isAuthenticated
       ? [...navBase, { to: "/messages", icon: Inbox, label: t.messages }]
       : [...navBase];
+
+  useEffect(() => {
+    let cancelled = false;
+    apiReferenceSiteSeo()
+      .then((r) => {
+        if (!cancelled) setSiteSeo(r);
+      })
+      .catch(() => {
+        if (!cancelled) setSiteSeo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let wentHidden = false;
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        wentHidden = true;
+        return;
+      }
+      if (document.visibilityState === "visible" && wentHidden) {
+        wentHidden = false;
+        apiReferenceSiteSeo()
+          .then((r) => setSiteSeo(r))
+          .catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  useEffect(() => {
+    applyClientDocumentSeo(loc.pathname, siteSeo ?? SITE_SEO_FALLBACK);
+  }, [loc.pathname, siteSeo]);
 
   useEffect(() => {
     if (!authReady || !isAuthenticated) {
@@ -425,7 +465,7 @@ function RootContent() {
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 text-xs sm:text-sm text-slate-600 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-          <p className="truncate">© {new Date().getFullYear()} VetExpert</p>
+          <p className="truncate">© {new Date().getFullYear()} VetConnect</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <a className="hover:underline" href="/privacy">
               Политика конфиденциальности

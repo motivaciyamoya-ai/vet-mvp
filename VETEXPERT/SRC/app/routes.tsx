@@ -24,6 +24,7 @@ import AdminSos from "./admin/AdminSos";
 import AdminReference from "./admin/AdminReference";
 import AdminPush from "./admin/AdminPush";
 import AdminSettings from "./admin/AdminSettings";
+import AdminSeo from "./admin/AdminSeo";
 import AdminVetCoins from "./admin/AdminVetCoins";
 import AdminDosageDrugs from "./admin/AdminDosageDrugs";
 import AdminEvents from "./admin/AdminEvents";
@@ -69,12 +70,19 @@ export const router = createBrowserRouter([
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950 max-w-2xl">
             <p className="font-semibold">Не удалось открыть раздел «Препараты · дозы»</p>
             <p className="text-sm mt-2 text-amber-900/90">
-              Обновите страницу. Если снова пусто — откройте консоль (F12 → Console) и проверьте, что в backend выполнены миграции Prisma (таблица DosageDrug) и перезапущен сервер.
+              Обновите страницу или попробуйте позже. Если ошибка сохранится — сообщите администратору.
+              {import.meta.env.DEV ? (
+                <span className="block mt-2 text-xs text-amber-900/75">
+                  <span className="font-semibold">DEV:</span> при пустых таблицах справочника проверьте миграции API и его
+                  перезапуск.
+                </span>
+              ) : null}
             </p>
           </div>
         ),
       },
       { path: "push", Component: AdminPush },
+      { path: "seo", Component: AdminSeo },
       { path: "settings", Component: AdminSettings },
       { path: "vetcoins", Component: AdminVetCoins },
     ],

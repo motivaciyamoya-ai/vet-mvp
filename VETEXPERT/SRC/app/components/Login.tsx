@@ -63,7 +63,7 @@ export default function Login() {
                   autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="vet@vetmvp.local"
+                  placeholder="email@company.com"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   required
                 />
@@ -142,46 +142,42 @@ export default function Login() {
                 Зарегистрироваться
               </Link>
             </p>
-            <p className="text-gray-500 text-xs leading-relaxed">
-              Админ-панель:{" "}
-              <Link to="/admin" className="text-emerald-700 font-semibold underline">
-                /admin
-              </Link>
-              . Демо-вход: <span className="font-mono">vet@vetmvp.local</span> или{" "}
-              <span className="font-mono">admin@vetmvp.local</span>, пароль{" "}
-              <span className="font-mono font-semibold">Demo123!</span>. В папке <span className="font-mono">backend</span>{" "}
-              выполните <span className="font-mono">npm run seed</span>.
-            </p>
-            <details className="text-left text-xs text-gray-600 border border-gray-100 rounded-lg p-3 bg-gray-50">
-              <summary className="cursor-pointer font-semibold text-gray-700">Не входит? Пошаговая проверка</summary>
-              <ol className="mt-2 list-decimal pl-5 space-y-2">
-                <li>
-                  Backend запущен: в <code className="bg-white px-1 rounded">backend</code> →{" "}
-                  <code className="bg-white px-1 rounded">npm run start:dev</code>. В консоли должно быть{" "}
-                  <code className="bg-white px-1 rounded">Listening on …/api/docs</code>.
-                </li>
-                <li>
-                  Откройте{" "}
-                  <a href="http://localhost:3000/api/docs" className="text-emerald-700 underline" target="_blank" rel="noreferrer">
-                    http://localhost:3000/api/docs
-                  </a>{" "}
-                  — если не открывается, вход с фронта тоже не сработает.
-                </li>
-                <li>
-                  Фронт с Vite (<code className="bg-white px-1 rounded">npm run dev</code>) должен слать запросы на{" "}
-                  <strong>тот же origin</strong> без <code className="bg-white px-1 rounded">VITE_API_BASE_URL</code> на
-                  чужой хост и пустую БД. Прокси: <code className="bg-white px-1 rounded">/api</code> →{" "}
-                  <code className="bg-white px-1 rounded">localhost:3000</code>.
-                </li>
-                <li>
-                  Если в ошибке текст про «нет связи с API» — проверьте пункты выше или задайте{" "}
-                  <code className="bg-white px-1 rounded">VITE_API_BASE_URL</code> на URL живого backend.
-                </li>
-                <li>
-                  После ошибки входа текст выше красным — это сообщение сервера или сети; не только «битый пароль».
-                </li>
-              </ol>
-            </details>
+            {!import.meta.env.DEV ? (
+              <p className="text-gray-500 text-xs leading-relaxed">
+                При проблемах со входом проверьте email/пароль и повторите попытку через несколько минут. Если письма с
+                подтверждением не приходят — загляньте в папку «Спам» или запросите письмо повторно в профиле.
+              </p>
+            ) : (
+              <>
+                <p className="text-gray-500 text-xs leading-relaxed">
+                  <span className="font-semibold">DEV:</span> демо-вход может быть доступен локально после{" "}
+                  <span className="font-mono">npm run seed</span> на API. Пример:{" "}
+                  <span className="font-mono">vet@vetmvp.local</span> /{" "}
+                  <span className="font-mono font-semibold">Demo123!</span>
+                </p>
+                <details className="text-left text-xs text-gray-600 border border-gray-100 rounded-lg p-3 bg-gray-50">
+                  <summary className="cursor-pointer font-semibold text-gray-700">Не входит? Локальная проверка</summary>
+                  <ol className="mt-2 list-decimal pl-5 space-y-2">
+                    <li>
+                      API запущено: каталог проекта backend →{" "}
+                      <code className="bg-white px-1 rounded">npm run start:dev</code>.
+                    </li>
+                    <li>
+                      Откройте{" "}
+                      <a href="http://localhost:3000/api/docs" className="text-emerald-700 underline" target="_blank" rel="noreferrer">
+                        http://localhost:3000/api/docs
+                      </a>{" "}
+                      — если документация не открывается, авторизация с фронта тоже не заработает.
+                    </li>
+                    <li>
+                      Dev-сервер фронта проксирует <code className="bg-white px-1 rounded">/api</code> на{" "}
+                      <code className="bg-white px-1 rounded">http://localhost:3000</code>. Для особых схем установите{" "}
+                      <code className="bg-white px-1 rounded">VITE_API_BASE_URL</code>.
+                    </li>
+                  </ol>
+                </details>
+              </>
+            )}
           </div>
         </div>
       </div>

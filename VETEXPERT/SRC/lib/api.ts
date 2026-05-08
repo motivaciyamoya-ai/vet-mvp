@@ -2,8 +2,9 @@ import type { ApiListingSummary } from "./marketplaceListingsMap";
 import type { PublicModerationDto } from "./moderationUi";
 
 /**
- * HTTP-клиент для NestJS API vet-mvp/backend (Prisma → PostgreSQL).
- * В dev по умолчанию запросы идут на тот же origin, Vite проксирует /api → localhost:3000.
+ * HTTP-клиент VetConnect для REST API того же домена или override через `VITE_API_BASE_URL`.
+ *
+ * Локально Vite может проксировать `/api` на ваш экземпляр API — см. `vite.config.ts`.
  */
 
 const ACCESS_KEY = "vetmvp_access";
@@ -27,7 +28,7 @@ function randomUuidV4Browser(): string {
     const h = Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
   }
-  /* Редкий край: без crypto — но формат всё равно v4, иначе backend отклонит лайк гостя. */
+  /* Редкий край: без crypto — но формат всё равно v4, иначе API отклонит лайк гостя. */
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (ch) => {
     const r = (Math.random() * 16) | 0;
     const v = ch === "x" ? r : (r & 0x3) | 0x8;
@@ -429,6 +430,25 @@ export async function apiForumHeroesByCategoryStats() {
   return apiFetch<ForumHeroesByCategoryStatsDto>("/api/reference/forum-heroes/by-category-stats");
 }
 
+/** Публичная SEO-конфигурация (`GET /api/reference/seo`). */
+export type PublicSiteSeoDto = {
+  siteName: string;
+  homeDocumentTitle: string;
+  metaDescription: string;
+  metaKeywords: string;
+  ogSiteName: string;
+  ogTitle: string | null;
+  ogDescription: string;
+  ogImageAbsolute: string | null;
+  canonicalOrigin: string | null;
+  themeColor: string;
+  twitterCard: "summary" | "summary_large_image";
+};
+
+export async function apiReferenceSiteSeo(): Promise<PublicSiteSeoDto> {
+  return apiFetch<PublicSiteSeoDto>("/api/reference/seo");
+}
+
 export async function apiListingsList(pageSize = 100) {
   return apiFetch<{ items: ApiListingSummary[]; total: number }>(
     `/api/listings?page=1&pageSize=${encodeURIComponent(String(pageSize))}`,
@@ -576,7 +596,7 @@ export async function apiCreateReport(body: CreateReportBody) {
   });
 }
 
-/** Снимок «живого» трафика (память процесса backend, не БД). */
+/** Снимок «живого» трафика (быстрый кольцевой буфер в памяти процесса API). */
 export type AdminLiveTrafficEvent = {
   at: string;
   ip: string;
@@ -601,4 +621,42 @@ export async function apiAdminLiveTraffic(windowSec = 300) {
   const sp = new URLSearchParams();
   sp.set("windowSec", String(windowSec));
   return apiFetch<AdminLiveTrafficSnapshot>(`/api/admin/analytics/live-traffic?${sp.toString()}`);
+}
+
+export type MedicalAnalyzerKind = "anamnesis" | "imaging";
+
+export type MedicalAnalyzerResultDto = {
+  kind: MedicalAnalyzerKind;
+  confidence: number;
+  urgency: "low" | "medium" | "high";
+  diagnosis: string[];
+  recommendations: string[];
+  additionalTests: string[];
+  notesForDoctor: string[];
+  disclaimer: string;
+};
+
+export async function apiMedicalAnalyzerAnalyze(input: {
+  kind: MedicalAnalyzerKind;
+  anamnesisText?: string;
+  notes?: string;
+  files?: File[];
+}) {
+  const fd = new FormData();
+  fd.set("kind", input.kind);
+  if (input.anamnesisText?.trim()) fd.set("anamnesisText", input.anamnesisText.trim());
+  if (input.notes?.trim()) fd.set("notes", input.notes.trim());
+  for (const f of input.files ?? []) {
+    fd.append("files", f, f.name);
+  }
+
+  const token = getAccessToken();
+  const h = new Headers();
+  if (token) h.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(apiUrl("/api/ai/medical-analyzer"), { method: "POST", headers: h, body: fd });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(extractApiErrorMessage(res, text) || `HTTP ${res.status}`);
+  }
+  return (await res.json()) as MedicalAnalyzerResultDto;
 }

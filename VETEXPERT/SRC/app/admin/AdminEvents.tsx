@@ -179,7 +179,7 @@ export default function AdminEvents() {
         </div>
 
         <p className="text-xs text-slate-500">
-          Текущие значения из БД: <span className="font-mono">events.sources.ics</span> и{" "}
+          Текущие сохранённые на сервере значения: <span className="font-mono">events.sources.ics</span> и{" "}
           <span className="font-mono">events.sources.rss</span> ({sources.icsText.length + sources.rssText.length}{" "}
           символов всего после последнего сохранения).
         </p>

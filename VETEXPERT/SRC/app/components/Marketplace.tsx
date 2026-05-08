@@ -61,7 +61,7 @@ export default function Marketplace({ limit }: { limit?: number }) {
   );
   const demoCards = useMemo(() => DEMO_MARKETPLACE_LISTINGS.map(demoToUnified), []);
 
-  /** Если в БД есть объявления — показываем только их у реальных авторов; демо — только офлайн/пустая БД. */
+  /** Если API вернуло объявления — показываем их; иначе — демо-набор (например, офлайн/пустой ответ). */
   const mergedCards = useMemo(() => {
     if (apiCards.length > 0) return apiCards;
     return demoCards;
@@ -104,13 +104,18 @@ export default function Marketplace({ limit }: { limit?: number }) {
             </span>
           ) : !limit && apiCards.length > 0 ? (
             <p className="text-[11px] sm:text-xs text-amber-900/80 bg-white/70 border border-amber-100 rounded-lg px-3 py-1.5 max-w-xl">
-              Объявления из базы: автор указан как зарегистрированный пользователь, можно написать продавцу.
+              Реальные объявления размещают пользователи сайта — при необходимости можно связаться с продавцом в карточке.
             </p>
           ) : !limit && usingDemoFallback && demoCards.length > 0 ? (
             <p className="text-[11px] sm:text-xs text-amber-900/90 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 max-w-xl">
-              Нет ответа от сервера или база без объявлений — ниже только демо-картинки без реального продавца. Чтобы были
-              настоящие объявления: запустите <span className="font-mono">npm run seed</span> в <span className="font-mono">backend</span>{" "}
-              или разместите объявление сами.
+              Список временно недоступен или пока без объявлений — ниже показаны демонстрационные материалы. Разместите
+              первое объявление, если хотите представить свой товар на площадке.
+              {import.meta.env.DEV ? (
+                <>
+                  {" "}
+                  (<span className="font-semibold">DEV:</span> для локальных тестов иногда нужен импорт демоданных в API.)
+                </>
+              ) : null}
             </p>
           ) : null}
         </div>

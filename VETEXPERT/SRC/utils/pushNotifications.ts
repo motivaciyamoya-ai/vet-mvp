@@ -29,7 +29,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 /**
- * Регистрирует Service Worker (для реальных push-уведомлений нужен backend)
+ * Регистрирует Service Worker (для реальных push-уведомлений нужна серверная отправка, например через FCM)
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
@@ -49,7 +49,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 
 /**
  * Подписывается на push-уведомления
- * ВАЖНО: Для реальной работы требуется backend с Firebase Cloud Messaging (FCM) или аналогом
+ * ВАЖНО: для реальной работы нужен сервис отправки (например Firebase Cloud Messaging / аналоги)
  */
 export async function subscribeToPushNotifications(): Promise<PushSubscription | null> {
   if (!isPushSupported()) {
@@ -68,7 +68,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
     const registration = await registerServiceWorker();
 
     if (!registration) {
-      console.log('Service Worker не зарегистрирован (требуется backend)');
+      console.log('Service Worker не зарегистрирован (нужна полноценная конфигурация push)');
       return null;
     }
 
@@ -78,14 +78,14 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
     //   applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
     // });
 
-    // Отправка subscription на backend
+    // Отправка subscription на API
     // await fetch('/api/push-subscribe', {
     //   method: 'POST',
     //   body: JSON.stringify(subscription),
     //   headers: { 'Content-Type': 'application/json' }
     // });
 
-    console.log('Push подписка (demo mode - требуется backend для реальных уведомлений)');
+    console.log('Push подписка (demo mode - для реальных уведомлений нужна серверная отправка)');
     return null;
   } catch (error) {
     console.error('Ошибка подписки на push:', error);

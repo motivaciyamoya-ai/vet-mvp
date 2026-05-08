@@ -1,8 +1,9 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ForumService } from '../forum/forum.service';
 import { ReferenceService } from './reference.service';
 import { SpecialistsListQueryDto } from './dto/specialists-query.dto';
+import { PublicSiteSeoDto } from './dto/public-site-seo.dto';
 
 @ApiTags('reference')
 @Controller('reference')
@@ -15,6 +16,13 @@ export class ReferenceController {
   @Get('countries')
   countries() {
     return this.ref.countries();
+  }
+
+  /** Публичная SEO-конфигурация сайта (ключи `seo.*` в SiteSetting). Без авторизации. */
+  @Get('seo')
+  @ApiOkResponse({ type: PublicSiteSeoDto })
+  siteSeo(): Promise<PublicSiteSeoDto> {
+    return this.ref.getPublicSiteSeo();
   }
 
   @Get('job-titles')

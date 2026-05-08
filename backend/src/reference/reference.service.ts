@@ -2,6 +2,51 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { SpecialistsListQueryDto } from './dto/specialists-query.dto';
+import type { PublicSiteSeoDto } from './dto/public-site-seo.dto';
+
+const SEO_DEFAULT_SITE_NAME = 'VetConnect';
+
+const SEO_DEFAULT_HOME_SEGMENT = 'Ветеринарное сообщество и инструменты';
+
+const SEO_DEFAULT_META_DESCRIPTION =
+  'VetConnect — профессиональная платформа для ветеринарных специалистов: форум, статьи, маркетплейс, мероприятия и AI‑инструменты для поддержки диагностики.';
+
+const SEO_DEFAULT_META_KEYWORDS =
+  'ветеринар, ветеринарный форум, ветеринарные статьи, ветеринарные мероприятия, рентген, УЗИ, AI диагностика';
+
+const SEO_DEFAULT_OG_DESCRIPTION =
+  'Форум, статьи, маркетплейс, календарь мероприятий и AI‑инструменты для ветеринарных специалистов.';
+
+/** Только чтобы собрать абсолютный og:image для относительных путей, если админ не задал canonical origin. */
+const SEO_FALLBACK_ORIGIN_FOR_ASSETS = 'https://vetconnect.online';
+
+const SEO_DEFAULT_THEME = '#059669';
+
+function seoPick(map: Record<string, string>, key: string): string {
+  return (map[key] ?? '').trim();
+}
+
+function normalizeTwitterCard(raw: string): 'summary' | 'summary_large_image' {
+  const v = raw.trim().toLowerCase();
+  return v === 'summary_large_image' ? 'summary_large_image' : 'summary';
+}
+
+function normalizeHexColor(raw: string): string {
+  const t = raw.trim();
+  if (!t) return SEO_DEFAULT_THEME;
+  if (/^#[0-9a-f]{3}([0-9a-f]{3})?([0-9a-f]{2})?$/i.test(t)) return t;
+  if (/^[0-9a-f]{3}([0-9a-f]{3})?([0-9a-f]{2})?$/i.test(t)) return `#${t}`;
+  return SEO_DEFAULT_THEME;
+}
+
+function resolveAbsoluteUrl(originBase: string, candidate: string): string | null {
+  const c = candidate.trim();
+  if (!c) return null;
+  if (/^https?:\/\//i.test(c)) return c;
+  const origin = originBase.replace(/\/+$/, '');
+  const path = c.startsWith('/') ? c : `/${c}`;
+  return `${origin}${path}`;
+}
 
 @Injectable()
 export class ReferenceService {
@@ -181,6 +226,64 @@ export class ReferenceService {
       total,
       page,
       pageSize,
+    };
+  }
+
+  /**
+   * Публичные SEO-поля для SPA: значения берутся из SiteSetting (`seo.*`), при отсутствии ключей — безопасные умолчанию.
+   */
+  async getPublicSiteSeo(): Promise<PublicSiteSeoDto> {
+    const rows = await this.prisma.siteSetting.findMany({
+      where: { key: { startsWith: 'seo.' } },
+      select: { key: true, value: true },
+    });
+    const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+
+    const siteName = seoPick(map, 'seo.site_name') || SEO_DEFAULT_SITE_NAME;
+
+    const homeExplicit = seoPick(map, 'seo.home_page_title');
+    const homeDocumentTitle = homeExplicit.length
+      ? homeExplicit
+      : `${SEO_DEFAULT_HOME_SEGMENT} · ${siteName}`;
+
+    const metaDescription = seoPick(map, 'seo.meta_description') || SEO_DEFAULT_META_DESCRIPTION;
+    const metaKeywords = seoPick(map, 'seo.meta_keywords') || SEO_DEFAULT_META_KEYWORDS;
+
+    const ogSiteName = seoPick(map, 'seo.og_site_name') || siteName;
+
+    const ogTitleRaw = seoPick(map, 'seo.og_title');
+
+    const ogDescription = seoPick(map, 'seo.og_description') || SEO_DEFAULT_OG_DESCRIPTION;
+
+    const canonicalOriginExplicit = seoPick(map, 'seo.canonical_origin');
+    const canonicalOrigin =
+      canonicalOriginExplicit.length > 0
+        ? canonicalOriginExplicit.replace(/\/+$/, '')
+        : null;
+
+    const originForAssets = canonicalOrigin ?? SEO_FALLBACK_ORIGIN_FOR_ASSETS;
+
+    const ogImageRaw = seoPick(map, 'seo.og_image');
+    const ogImageAbsolute =
+      resolveAbsoluteUrl(originForAssets, ogImageRaw.length ? ogImageRaw : '/favicon.svg') ??
+      resolveAbsoluteUrl(originForAssets, '/favicon.svg');
+
+    const themeColor = normalizeHexColor(seoPick(map, 'seo.theme_color'));
+
+    const twitterCard = normalizeTwitterCard(seoPick(map, 'seo.twitter_card'));
+
+    return {
+      siteName,
+      homeDocumentTitle,
+      metaDescription,
+      metaKeywords,
+      ogSiteName,
+      ogTitle: ogTitleRaw.length ? ogTitleRaw : null,
+      ogDescription,
+      ogImageAbsolute,
+      canonicalOrigin,
+      themeColor,
+      twitterCard,
     };
   }
 }

@@ -18,12 +18,24 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://vet:vet@postgres:5432/vetmvp
       # Если вы используете JWT/SMTP/Push — заполните эти значения в .env (см backend/.env.example)
+      AI_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_VISION_MODEL: llava:7b
     depends_on:
       - postgres
+      - ollama
     ports:
       - "3000:3000"
     volumes:
       - backend_uploads:/app/uploads
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    # В идеале без публикации порта наружу (backend ходит по docker-сети)
+    # ports:
+    #   - "11434:11434"
 
   web:
     build:
@@ -31,9 +43,10 @@ services:
     depends_on:
       - backend
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
 
 volumes:
   vet_pg_data:
   backend_uploads:
+  ollama_data:
 

@@ -92,9 +92,9 @@ export default function ArticleDetail() {
       <div className="max-w-lg mx-auto space-y-6 text-center py-12">
         <h1 className="text-xl font-bold text-gray-900">Статья не найдена</h1>
         <p className="text-gray-600 text-sm">
-          Проверьте ссылку или откройте список статей. В демо-режиме доступны номера:{" "}
-          {DEMO_ARTICLES.map((a) => a.id).join(", ")}. После загрузки контента через seed статьи из базы
-          имеют свой id в URL.
+          Проверьте ссылку или откройте список статей. Для ознакомительных примеров иногда можно открыть материалы с id:{" "}
+          {DEMO_ARTICLES.map((a) => a.id).join(", ")}. У опубликованных на VetConnect статей есть собственная страница в
+          каталоге.
         </p>
         <button
           type="button"
@@ -270,7 +270,8 @@ export default function ArticleDetail() {
           />
           <p className="text-xs text-gray-500 pt-4 border-t border-gray-100 flex items-center gap-2">
             <User className="w-3.5 h-3.5" />
-            Демо-материал: комментарии и профиль автора доступны для статей из базы после seed.
+            Примечание: это демонстрационный текст; у опубликованных материалов доступнее комментирование и связь с
+            профилем автора.
           </p>
         </div>
       </div>

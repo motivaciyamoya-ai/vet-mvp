@@ -180,13 +180,13 @@ export default function Forum() {
         </button>
       </div>
 
-      {/* Categories — компактно, порядок и эмодзи из БД (как в админке) */}
+      {/* Разделы подгружаются с сервера; админка задаёт порядок и оформление */}
       <div>
         <h3 className="font-semibold text-sm lg:text-base text-gray-700 mb-2 lg:mb-2.5">Разделы форума</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-2">
           {categoryTiles.length === 0 ? (
             <p className="text-xs sm:text-sm text-gray-600 col-span-full">
-              Разделы загружаются из базы. Если список пуст — добавьте категории в админке «Форум» или выполните seed.
+              Разделы подгружаются с сервера. Если список пуст — администратор может добавить их в панели управления.
             </p>
           ) : (
             categoryTiles.map((c) => {
@@ -221,7 +221,7 @@ export default function Forum() {
       {/* Discussions */}
       <div className="bg-white rounded-lg lg:rounded-xl border border-gray-200 overflow-hidden">
         {activeFilter === "all" && feedLoading ? (
-          <div className="text-center py-12 text-gray-600">Загрузка тем из базы…</div>
+          <div className="text-center py-12 text-gray-600">Загрузка тем…</div>
         ) : discussions.length === 0 ? (
           <div className="text-center py-12 lg:py-16">
             <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -241,9 +241,9 @@ export default function Forum() {
             <p className="text-sm lg:text-base text-gray-500">
               {activeFilter === "closed"
                 ? "Здесь отображаются горячие темы, где автор отметил лучший ответ."
-                : activeFilter === "hot"
+                :                 activeFilter === "hot"
                   ? "Пометьте тему как горячую при создании — она попадёт в этот фильтр"
-                  : "Создайте тему через кнопки выше — данные берутся из PostgreSQL"}
+                  : "Создайте тему через кнопки выше — после публикации она появится в этом списке"}
             </p>
           </div>
         ) : (

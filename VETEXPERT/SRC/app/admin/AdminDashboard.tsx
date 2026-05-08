@@ -82,7 +82,9 @@ export default function AdminDashboard() {
         }
         if (msg === "Failed to fetch" || msg.includes("NetworkError")) {
           setError(
-            "Нет связи с сервером: запущен ли backend (порт 3000)? В dev Vite должен проксировать /api на него.",
+            import.meta.env.DEV
+              ? "Нет связи с сервером. Для локальной разработки убедитесь, что API запущено и dev-прокси /api настроен."
+              : "Нет связи с сервером. Проверьте подключение и попробуйте обновить страницу через минуту.",
           );
           return;
         }
@@ -172,7 +174,7 @@ export default function AdminDashboard() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Аналитика и обзор</h1>
         <p className="text-slate-600 text-sm mt-1">
-          Сводка за 14 дней, распределения и последние регистрации (данные из БД).
+          Сводка за 14 дней: распределения и последние регистрации.
         </p>
       </div>
 

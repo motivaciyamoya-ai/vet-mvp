@@ -1,6 +1,7 @@
 import { ArrowLeft, FileSearch, Upload, Loader, Brain, AlertCircle, FileText, Image as ImageIcon, Sparkles, Coins } from "lucide-react";
 import { useState } from "react";
 import { useVetPoints } from "../contexts/VetPointsContext";
+import { apiMedicalAnalyzerAnalyze, type MedicalAnalyzerResultDto } from "../../lib/api";
 
 interface MedicalAnalyzerProps {
   onBack: () => void;
@@ -12,14 +13,9 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
   const [analysisType, setAnalysisType] = useState<"anamnesis" | "imaging">("anamnesis");
   const [anamnesis, setAnamnesis] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [notes, setNotes] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<{
-    diagnosis: string[];
-    confidence: number;
-    recommendations: string[];
-    additionalTests: string[];
-    urgency: "low" | "medium" | "high";
-  } | null>(null);
+  const [result, setResult] = useState<MedicalAnalyzerResultDto | null>(null);
   const { balance, spendServer } = useVetPoints();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,55 +39,19 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
     setAnalyzing(true);
     setResult(null);
 
-    // Симуляция AI-анализа
-    setTimeout(() => {
-      if (analysisType === "anamnesis") {
-        setResult({
-          diagnosis: [
-            "Острый гастроэнтерит (вероятность 78%)",
-            "Пищевая непереносимость (вероятность 15%)",
-            "Инородное тело в ЖКТ (вероятность 7%)",
-          ],
-          confidence: 78,
-          recommendations: [
-            "Голодная диета 12-24 часа",
-            "Обеспечить доступ к чистой воде",
-            "Начать регидратационную терапию",
-            "Рассмотреть применение пробиотиков",
-          ],
-          additionalTests: [
-            "Общий анализ крови",
-            "Биохимический анализ крови",
-            "УЗИ брюшной полости",
-            "Копрологическое исследование",
-          ],
-          urgency: "medium",
-        });
-      } else {
-        setResult({
-          diagnosis: [
-            "Признаки пневмонии в правой доле (вероятность 82%)",
-            "Бронхит (вероятность 12%)",
-            "Плевральный выпот (вероятность 6%)",
-          ],
-          confidence: 82,
-          recommendations: [
-            "Антибиотикотерапия широкого спектра",
-            "Рентгенография в динамике через 5-7 дней",
-            "Контроль температуры",
-            "Обеспечить покой и тепло",
-          ],
-          additionalTests: [
-            "Посев мокроты",
-            "Общий анализ крови с лейкоформулой",
-            "С-реактивный белок",
-            "Газы крови (при необходимости)",
-          ],
-          urgency: "high",
-        });
-      }
+    try {
+      const r = await apiMedicalAnalyzerAnalyze({
+        kind: analysisType,
+        anamnesisText: analysisType === "anamnesis" ? anamnesis : undefined,
+        notes: analysisType === "imaging" ? notes : undefined,
+        files: uploadedFiles,
+      });
+      setResult(r);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Не удалось выполнить AI-анализ");
+    } finally {
       setAnalyzing(false);
-    }, 3000);
+    }
   };
 
   const getUrgencyColor = (urgency: string) => {
@@ -189,6 +149,39 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
                 />
                 <div className="text-xs text-gray-500 mt-1">{anamnesis.length}/2000 символов</div>
               </div>
+
+              <div>
+                <label className="block font-semibold mb-2 text-sm lg:text-base">
+                  Файл анамнеза (опционально)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-5 text-center hover:border-blue-400 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf,.pdf"
+                    multiple
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <Upload className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-gray-700 mb-1">Загрузите скан/фото или PDF</p>
+                    <p className="text-xs text-gray-500">JPG, PNG, WebP или PDF</p>
+                  </label>
+                </div>
+
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-sm">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        <span className="flex-1 truncate">{file.name}</span>
+                        <span className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -199,7 +192,7 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf,.pdf,.dcm"
                     multiple
                     onChange={handleFileUpload}
                     className="hidden"
@@ -241,6 +234,8 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
                 <textarea
                   id="imaging-notes"
                   placeholder="Укажите проекцию снимка, область исследования, клинические данные..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] resize-y text-sm lg:text-base"
                 />
               </div>
@@ -263,7 +258,7 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
             onClick={() => void analyzeData()}
             disabled={
               analyzing ||
-              (analysisType === "anamnesis" ? !anamnesis : uploadedFiles.length === 0) ||
+              (analysisType === "anamnesis" ? (!anamnesis.trim() && uploadedFiles.length === 0) : uploadedFiles.length === 0) ||
               balance < ANALYZER_COST
             }
             className="w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3.5 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
@@ -376,6 +371,20 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
                 </ul>
               </div>
 
+              {result.notesForDoctor?.length ? (
+                <div className="bg-slate-50 border-l-4 border-slate-400 p-4 rounded-lg">
+                  <div className="font-semibold text-slate-900 mb-2">Заметки для врача</div>
+                  <ul className="space-y-1.5">
+                    {result.notesForDoctor.map((n, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm text-slate-800">
+                        <span className="text-slate-500">•</span>
+                        <span>{n}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               {/* Disclaimer */}
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <div className="flex items-start gap-2">
@@ -383,9 +392,8 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
                   <div className="text-xs text-amber-900">
                     <p className="font-semibold mb-1">Важное предупреждение</p>
                     <p>
-                      Результаты AI-анализа носят исключительно рекомендательный характер и не заменяют
-                      профессионального клинического суждения. Окончательный диагноз и план лечения должен
-                      определяться ветеринарным специалистом на основе комплексного обследования.
+                      {result.disclaimer ||
+                        "Результаты AI-анализа носят рекомендательный характер и не заменяют профессионального клинического суждения."}
                     </p>
                   </div>
                 </div>

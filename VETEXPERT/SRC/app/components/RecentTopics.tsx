@@ -83,7 +83,9 @@ export default function RecentTopics({ limit }: { limit?: number }) {
             </div>
             <div>
               <h2 className="font-bold text-lg sm:text-xl lg:text-2xl text-gray-900">Новые темы форума</h2>
-              <p className="text-emerald-700 text-xs sm:text-sm">{loading ? "Загрузка…" : "Последние темы из PostgreSQL"}</p>
+              <p className="text-emerald-700 text-xs sm:text-sm">
+                {loading ? "Загрузка…" : "Последние темы сообщества"}
+              </p>
             </div>
           </div>
           <Link to="/forum" className="hidden sm:inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium text-sm transition-colors">

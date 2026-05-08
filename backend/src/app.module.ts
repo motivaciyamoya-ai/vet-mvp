@@ -23,6 +23,7 @@ import { DosageDrugsModule } from './dosage-drugs/dosage-drugs.module';
 import { HomeChatModule } from './home-chat/home-chat.module';
 import { VetEventsModule } from './vet-events/vet-events.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { AiToolsModule } from './ai-tools/ai-tools.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -51,6 +52,7 @@ import { ModerationModule } from './moderation/moderation.module';
     HomeChatModule,
     VetEventsModule,
     ModerationModule,
+    AiToolsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

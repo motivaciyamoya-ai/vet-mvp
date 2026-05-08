@@ -1,5 +1,5 @@
-Contact: mailto:support@vetmvp.local
+Contact: mailto:support@vetconnect.online
 Preferred-Languages: ru, en
-Canonical: https://example.com/security.txt
+Canonical: https://vetconnect.online/.well-known/security.txt
 
-# Замените URL и почту на боевые значения после деплоя.
+# Замените mailto: на ваш официальный контакт безопасности, если нужен другой адрес.

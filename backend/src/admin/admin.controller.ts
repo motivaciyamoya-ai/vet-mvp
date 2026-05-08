@@ -51,6 +51,7 @@ import {
   AdminPatchDosageDrugDto,
 } from '../dosage-drugs/dto/admin-dosage-drug.dto';
 import { AdminCreateManualVetEventDto, AdminVetEventsSourcesDto } from './dto/admin-events.dto';
+import { LiveTrafficService } from '../live-traffic/live-traffic.service';
 
 @ApiTags('admin')
 @ApiBearerAuth()
