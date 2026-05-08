@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Mail, Lock, Eye, EyeOff, LogIn, Loader } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { apiReferenceMaintenance } from "../../lib/api";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -21,8 +22,13 @@ export default function Login() {
     try {
       const result = await login(email, password);
       if (result.ok) {
+        const maintenance = await apiReferenceMaintenance().catch(() => null);
         const from = (location.state as { from?: string } | null)?.from;
         const safe = from?.startsWith("/") && !from.startsWith("//") ? from : null;
+        if (maintenance?.enabled) {
+          navigate("/admin");
+          return;
+        }
         navigate(safe ?? "/");
       } else {
         setError(result.error);
