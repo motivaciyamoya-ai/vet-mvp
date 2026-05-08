@@ -232,8 +232,7 @@ function RootContent() {
 
   const maintenanceOn = maintenance?.enabled === true;
   const allowDuringMaintenance =
-    loc.pathname.startsWith("/login") ||
-    (loc.pathname.startsWith("/admin") && user?.role === "ADMIN");
+    loc.pathname.startsWith("/login") || user?.role === "ADMIN";
 
   if (maintenanceOn && !allowDuringMaintenance) {
     return <MaintenancePage title={maintenance?.title ?? "Технические работы"} message={maintenance?.message ?? ""} />;
