@@ -44,9 +44,18 @@ services:
       - backend
     ports:
       - "127.0.0.1:8080:80"
+    networks:
+      default:
+      proxy:
+        aliases:
+          - web
 
 volumes:
   vet_pg_data:
   backend_uploads:
   ollama_data:
+
+networks:
+  proxy:
+    external: true
 
