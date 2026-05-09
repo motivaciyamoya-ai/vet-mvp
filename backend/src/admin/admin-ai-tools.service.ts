@@ -41,6 +41,8 @@ export class AdminAiToolsService {
         analyzerTemperature: resolved.temperature,
         analyzerMaxImages: resolved.maxImages,
         medicalAnalyzerEnabled: resolved.medicalAnalyzerEnabled,
+        medicalAnalyzerAnamnesisEnabled: resolved.medicalAnalyzerAnamnesisEnabled,
+        medicalAnalyzerImagingEnabled: resolved.medicalAnalyzerImagingEnabled,
       },
       openaiApiKeyMasked: key.preview,
       openaiApiKeyConfigured: key.set,
@@ -116,6 +118,20 @@ export class AdminAiToolsService {
 
     if (dto.medicalAnalyzerEnabled !== undefined) {
       await upsert(AI_SITE_KEYS.medicalAnalyzerEnabled, dto.medicalAnalyzerEnabled ? 'true' : 'false');
+    }
+
+    if (dto.medicalAnalyzerAnamnesisEnabled !== undefined) {
+      await upsert(
+        AI_SITE_KEYS.medicalAnalyzerAnamnesisEnabled,
+        dto.medicalAnalyzerAnamnesisEnabled ? 'true' : 'false',
+      );
+    }
+
+    if (dto.medicalAnalyzerImagingEnabled !== undefined) {
+      await upsert(
+        AI_SITE_KEYS.medicalAnalyzerImagingEnabled,
+        dto.medicalAnalyzerImagingEnabled ? 'true' : 'false',
+      );
     }
 
     return this.getAiToolsConfig();

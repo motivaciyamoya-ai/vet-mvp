@@ -71,4 +71,24 @@ export class AdminAiToolsConfigDto {
   })
   @IsBoolean()
   medicalAnalyzerEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Разрешить режим «Анамнез» (текст/файлы)' })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
+  @IsBoolean()
+  medicalAnalyzerAnamnesisEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Разрешить режим «УЗИ/Рентген» (анализ изображений)' })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
+  @IsBoolean()
+  medicalAnalyzerImagingEnabled?: boolean;
 }

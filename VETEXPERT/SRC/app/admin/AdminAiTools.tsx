@@ -10,6 +10,8 @@ type Effective = {
   analyzerTemperature: number;
   analyzerMaxImages: number;
   medicalAnalyzerEnabled: boolean;
+  medicalAnalyzerAnamnesisEnabled: boolean;
+  medicalAnalyzerImagingEnabled: boolean;
 };
 
 type ConfigResponse = {
@@ -41,6 +43,8 @@ export default function AdminAiTools() {
   const [analyzerTemperature, setAnalyzerTemperature] = useState(0.2);
   const [analyzerMaxImages, setAnalyzerMaxImages] = useState(6);
   const [medicalAnalyzerEnabled, setMedicalAnalyzerEnabled] = useState(true);
+  const [medicalAnalyzerAnamnesisEnabled, setMedicalAnalyzerAnamnesisEnabled] = useState(true);
+  const [medicalAnalyzerImagingEnabled, setMedicalAnalyzerImagingEnabled] = useState(true);
   const [changeOpenaiKey, setChangeOpenaiKey] = useState(false);
   const [openaiApiKeyDraft, setOpenaiApiKeyDraft] = useState("");
 
@@ -55,6 +59,8 @@ export default function AdminAiTools() {
     setAnalyzerTemperature(e.analyzerTemperature);
     setAnalyzerMaxImages(e.analyzerMaxImages);
     setMedicalAnalyzerEnabled(e.medicalAnalyzerEnabled);
+    setMedicalAnalyzerAnamnesisEnabled(e.medicalAnalyzerAnamnesisEnabled);
+    setMedicalAnalyzerImagingEnabled(e.medicalAnalyzerImagingEnabled);
     setChangeOpenaiKey(false);
     setOpenaiApiKeyDraft("");
   }, []);
@@ -91,6 +97,8 @@ export default function AdminAiTools() {
         analyzerTemperature,
         analyzerMaxImages: Math.round(analyzerMaxImages),
         medicalAnalyzerEnabled,
+        medicalAnalyzerAnamnesisEnabled,
+        medicalAnalyzerImagingEnabled,
       };
       if (changeOpenaiKey) {
         json.openaiApiKey = openaiApiKeyDraft.trim();
@@ -202,6 +210,57 @@ export default function AdminAiTools() {
               получают 403. Флаг также можно задать через{" "}
               <code className="bg-slate-100 px-1 rounded">AI_MEDICAL_ANALYZER_ENABLED</code>.
             </p>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="font-semibold text-slate-900 text-sm">Отдельные режимы</p>
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={medicalAnalyzerAnamnesisEnabled}
+                  onChange={(e) => setMedicalAnalyzerAnamnesisEnabled(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span className="text-sm text-slate-800">
+                  <strong>Анамнез</strong> — текст + (опционально) вложения.
+                  <span className="block text-xs text-slate-600 mt-1">
+                    Подходит для описания симптомов/истории болезни. Если выключить — анализ анамнеза будет запрещён,
+                    но снимки могут оставаться включёнными.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={medicalAnalyzerImagingEnabled}
+                  onChange={(e) => setMedicalAnalyzerImagingEnabled(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span className="text-sm text-slate-800">
+                  <strong>УЗИ/Рентген</strong> — анализ изображений.
+                  <span className="block text-xs text-slate-600 mt-1">
+                    Используется, когда врач прикладывает снимки. Если выключить — режим снимков будет запрещён.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="font-semibold text-slate-900 text-sm">Какие файлы поддерживаются</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-slate-700">
+                <li>
+                  <strong>Изображения</strong>: JPG/JPEG, PNG, WebP, GIF
+                </li>
+                <li>
+                  <strong>PDF</strong>: принимается как вложение, но для анализа снимков лучше конвертировать страницы в PNG/JPG
+                </li>
+                <li>
+                  <strong>DICOM</strong>: сейчас не анализируется напрямую — конвертируйте в PNG/JPG
+                </li>
+              </ul>
+              <p className="text-xs text-slate-600 mt-2">
+                Ограничения: до <strong>6</strong> файлов за запрос, каждый до <strong>12 MB</strong> (серверный лимит).
+              </p>
+            </div>
 
             <label className="block space-y-1">
               <span className="text-sm font-medium text-slate-800">Провайдер</span>

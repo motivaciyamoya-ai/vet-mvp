@@ -11,6 +11,8 @@ export const AI_SITE_KEYS = {
   analyzerTemperature: 'ai.analyzer.temperature',
   analyzerMaxImages: 'ai.analyzer.max_images',
   medicalAnalyzerEnabled: 'ai.features.medical_analyzer_enabled',
+  medicalAnalyzerAnamnesisEnabled: 'ai.features.medical_analyzer.anamnesis_enabled',
+  medicalAnalyzerImagingEnabled: 'ai.features.medical_analyzer.imaging_enabled',
 } as const;
 
 export type ResolvedAiRuntime = {
@@ -24,6 +26,8 @@ export type ResolvedAiRuntime = {
   temperature: number;
   maxImages: number;
   medicalAnalyzerEnabled: boolean;
+  medicalAnalyzerAnamnesisEnabled: boolean;
+  medicalAnalyzerImagingEnabled: boolean;
   /** Откуда взято значение провайдера: setting | env | default */
   providerSource: 'setting' | 'env' | 'default';
 };
@@ -108,6 +112,16 @@ export function resolveAiRuntime(siteMap: Record<string, string>, config: Config
     envEnabled,
   );
 
+  // Детализация по режимам (по умолчанию наследуем общий флаг).
+  const { value: medicalAnalyzerAnamnesisEnabled } = truthySite(
+    pickSite(siteMap, AI_SITE_KEYS.medicalAnalyzerAnamnesisEnabled),
+    medicalAnalyzerEnabled,
+  );
+  const { value: medicalAnalyzerImagingEnabled } = truthySite(
+    pickSite(siteMap, AI_SITE_KEYS.medicalAnalyzerImagingEnabled),
+    medicalAnalyzerEnabled,
+  );
+
   return {
     provider,
     openaiApiKey,
@@ -118,6 +132,8 @@ export function resolveAiRuntime(siteMap: Record<string, string>, config: Config
     temperature,
     maxImages,
     medicalAnalyzerEnabled,
+    medicalAnalyzerAnamnesisEnabled,
+    medicalAnalyzerImagingEnabled,
     providerSource,
   };
 }

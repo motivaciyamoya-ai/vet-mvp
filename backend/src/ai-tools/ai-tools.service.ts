@@ -77,11 +77,21 @@ export class AiToolsService {
     return resolveAiRuntime(site, this.config);
   }
 
-  async assertMedicalAnalyzerEnabled(): Promise<void> {
+  async assertMedicalAnalyzerEnabled(kind?: 'anamnesis' | 'imaging'): Promise<void> {
     const r = await this.resolvedRuntime();
     if (!r.medicalAnalyzerEnabled) {
       throw new ForbiddenException(
         'Медицинский AI-анализатор отключён администратором. Включите его в админ-панели: AI-инструменты.',
+      );
+    }
+    if (kind === 'anamnesis' && !r.medicalAnalyzerAnamnesisEnabled) {
+      throw new ForbiddenException(
+        'Режим «Анамнез» отключён администратором. Включите его в админ-панели: AI-инструменты.',
+      );
+    }
+    if (kind === 'imaging' && !r.medicalAnalyzerImagingEnabled) {
+      throw new ForbiddenException(
+        'Режим «УЗИ/Рентген» отключён администратором. Включите его в админ-панели: AI-инструменты.',
       );
     }
   }
