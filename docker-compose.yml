@@ -42,13 +42,6 @@ services:
   web:
     build:
       context: ./VETEXPERT
-    environment:
-      # Set these on the server (not in git) to protect /grafana and /prometheus.
-      # Example:
-      # MONITORING_BASIC_AUTH_USER: admin
-      # MONITORING_BASIC_AUTH_PASS: "strong-password"
-      MONITORING_BASIC_AUTH_USER: ${MONITORING_BASIC_AUTH_USER:-}
-      MONITORING_BASIC_AUTH_PASS: ${MONITORING_BASIC_AUTH_PASS:-}
     depends_on:
       - backend
     ports:
