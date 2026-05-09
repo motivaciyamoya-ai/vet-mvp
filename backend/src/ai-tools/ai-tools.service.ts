@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { VetcoinService } from '../vetcoin/vetcoin.service';
 import { ResolvedAiRuntime, resolveAiRuntime } from './ai-tools-config';
 
 type MulterMemFile = {
@@ -26,6 +27,14 @@ export type MedicalAnalyzerResult = {
   additionalTests: string[];
   notesForDoctor: string[];
   disclaimer: string;
+};
+
+export type MedicalAnalyzerRunResponse = MedicalAnalyzerResult & {
+  analysisId: string;
+  charged: boolean;
+  cost: number;
+  balanceAfter?: number;
+  status: 'SUCCESS' | 'EMPTY';
 };
 
 function clamp01to100(n: number): number {
@@ -63,6 +72,7 @@ export class AiToolsService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly vetcoin: VetcoinService,
   ) {}
 
   /** Текущая конфигурация (БД поверх env). */
@@ -177,6 +187,142 @@ export class AiToolsService {
 
     return normalizeResult('imaging', res);
   }
+
+  async runMedicalAnalyzer(input: {
+    userId: string;
+    kind: 'anamnesis' | 'imaging';
+    anamnesisText: string;
+    notes: string;
+    files: MulterMemFile[];
+  }): Promise<MedicalAnalyzerRunResponse> {
+    const runtime = await this.resolvedRuntime();
+    const cost = await this.vetcoin.settingInt('vetcoin.tool_analyzer_cost', 50);
+    const imagesCount = input.files.filter((f) => /^image\//i.test(f.mimetype)).length;
+    const modelUsed = runtime.provider === 'openai' ? runtime.openaiModel : runtime.ollamaVisionModel;
+
+    try {
+      const r =
+        input.kind === 'anamnesis'
+          ? await this.analyzeAnamnesis({
+              userId: input.userId,
+              anamnesisText: input.anamnesisText,
+              files: input.files,
+            })
+          : await this.analyzeImaging({
+              userId: input.userId,
+              notes: input.notes,
+              files: input.files,
+            });
+
+      const empty = isEmptyAnalysis(r);
+
+      const saved = await this.prisma.$transaction(async (tx) => {
+        let balanceAfter: number | undefined;
+        let charged = false;
+        if (!empty && cost > 0) {
+          const out = await this.vetcoin.applyDeltaInTransaction(tx, input.userId, -cost, 'AI-анализ диагностики');
+          balanceAfter = out.balance;
+          charged = true;
+        } else {
+          const u = await tx.user.findUnique({ where: { id: input.userId }, select: { vetCoinBalance: true } });
+          balanceAfter = u?.vetCoinBalance;
+        }
+
+        const row = await tx.aiMedicalAnalyzerRun.create({
+          data: {
+            userId: input.userId,
+            kind: input.kind,
+            provider: runtime.provider,
+            model: modelUsed,
+            imagesCount,
+            status: empty ? 'EMPTY' : 'SUCCESS',
+            resultJson: r as any,
+            cost,
+            charged,
+            balanceAfter,
+          },
+        });
+
+        return { id: row.id, charged, balanceAfter, status: empty ? ('EMPTY' as const) : ('SUCCESS' as const) };
+      });
+
+      return {
+        ...r,
+        analysisId: saved.id,
+        charged: saved.charged,
+        cost,
+        balanceAfter: saved.balanceAfter,
+        status: saved.status,
+      };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await this.prisma.aiMedicalAnalyzerRun.create({
+        data: {
+          userId: input.userId,
+          kind: input.kind,
+          provider: runtime.provider,
+          model: modelUsed,
+          imagesCount,
+          status: 'ERROR',
+          errorMessage: msg.slice(0, 1000),
+          cost,
+          charged: false,
+        },
+      });
+      throw e;
+    }
+  }
+
+  async listMedicalAnalyzerRuns(userId: string) {
+    const rows = await this.prisma.aiMedicalAnalyzerRun.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+      select: {
+        id: true,
+        kind: true,
+        createdAt: true,
+        status: true,
+        charged: true,
+        cost: true,
+        provider: true,
+        model: true,
+        imagesCount: true,
+        errorMessage: true,
+        resultJson: true,
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      createdAt: r.createdAt.toISOString(),
+      status: r.status,
+      charged: r.charged,
+      cost: r.cost,
+      provider: r.provider,
+      model: r.model,
+      imagesCount: r.imagesCount,
+      errorMessage: r.errorMessage,
+      result: r.resultJson,
+    }));
+  }
+
+  async getMedicalAnalyzerPricing() {
+    const cost = await this.vetcoin.settingInt('vetcoin.tool_analyzer_cost', 50);
+    const currencyDisplayName = await this.vetcoin.settingText('vetcoin.display_name', 'VetCoin');
+    return { cost, currencyDisplayName };
+  }
+}
+
+function isEmptyAnalysis(r: MedicalAnalyzerResult): boolean {
+  const onlyPlaceholder =
+    r.diagnosis.length === 1 && r.diagnosis[0]?.toLowerCase().includes('недостаточно данных');
+  return (
+    onlyPlaceholder &&
+    r.recommendations.length === 0 &&
+    r.additionalTests.length === 0 &&
+    r.notesForDoctor.length === 0
+  );
 }
 
 function buildPrompt(input: {

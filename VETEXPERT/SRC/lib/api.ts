@@ -653,7 +653,36 @@ export type MedicalAnalyzerResultDto = {
   additionalTests: string[];
   notesForDoctor: string[];
   disclaimer: string;
+  analysisId: string;
+  charged: boolean;
+  cost: number;
+  balanceAfter?: number;
+  status: "SUCCESS" | "EMPTY";
 };
+
+export type MedicalAnalyzerPricingDto = { cost: number; currencyDisplayName: string };
+
+export async function apiMedicalAnalyzerPricing() {
+  return apiFetch<MedicalAnalyzerPricingDto>("/api/ai/medical-analyzer/pricing");
+}
+
+export type MedicalAnalyzerHistoryRowDto = {
+  id: string;
+  kind: MedicalAnalyzerKind;
+  createdAt: string;
+  status: "SUCCESS" | "EMPTY" | "ERROR";
+  charged: boolean;
+  cost: number;
+  provider: string;
+  model: string;
+  imagesCount: number;
+  errorMessage?: string | null;
+  result?: MedicalAnalyzerResultDto | null;
+};
+
+export async function apiMedicalAnalyzerHistory() {
+  return apiFetch<MedicalAnalyzerHistoryRowDto[]>("/api/ai/medical-analyzer/history");
+}
 
 export async function apiMedicalAnalyzerAnalyze(input: {
   kind: MedicalAnalyzerKind;

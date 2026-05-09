@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  Get,
   Post,
   UploadedFiles,
   UseGuards,
@@ -40,6 +41,16 @@ function normalizeKind(v: string | undefined): 'anamnesis' | 'imaging' {
 @UseGuards(JwtAuthGuard, ModerationGuard)
 export class AiToolsController {
   constructor(private readonly ai: AiToolsService) {}
+
+  @Get('medical-analyzer/pricing')
+  async analyzerPricing() {
+    return this.ai.getMedicalAnalyzerPricing();
+  }
+
+  @Get('medical-analyzer/history')
+  async myAnalyzerHistory(@CurrentUser() user: AuthUser) {
+    return this.ai.listMedicalAnalyzerRuns(user.id);
+  }
 
   @Post('medical-analyzer')
   @ApiConsumes('multipart/form-data')
@@ -86,9 +97,11 @@ export class AiToolsController {
       if (!anamnesisText && safeFiles.length === 0) {
         throw new BadRequestException('Для анамнеза укажите текст или загрузите файл.');
       }
-      return this.ai.analyzeAnamnesis({
+      return this.ai.runMedicalAnalyzer({
         userId: user.id,
+        kind,
         anamnesisText,
+        notes: '',
         files: safeFiles,
       });
     }
@@ -96,8 +109,10 @@ export class AiToolsController {
     if (safeFiles.length === 0) {
       throw new BadRequestException('Для УЗИ/Рентгена загрузите хотя бы один снимок.');
     }
-    return this.ai.analyzeImaging({
+    return this.ai.runMedicalAnalyzer({
       userId: user.id,
+      kind,
+      anamnesisText: '',
       notes,
       files: safeFiles,
     });

@@ -1,13 +1,11 @@
 import { ArrowLeft, FileSearch, Upload, Loader, Brain, AlertCircle, FileText, Image as ImageIcon, Sparkles, Coins } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useVetPoints } from "../contexts/VetPointsContext";
-import { apiMedicalAnalyzerAnalyze, type MedicalAnalyzerResultDto } from "../../lib/api";
+import { apiMedicalAnalyzerAnalyze, apiMedicalAnalyzerPricing, type MedicalAnalyzerResultDto } from "../../lib/api";
 
 interface MedicalAnalyzerProps {
   onBack: () => void;
 }
-
-const ANALYZER_COST = 50;
 
 export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
   const [analysisType, setAnalysisType] = useState<"anamnesis" | "imaging">("anamnesis");
@@ -16,7 +14,20 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
   const [notes, setNotes] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<MedicalAnalyzerResultDto | null>(null);
-  const { balance, spendServer } = useVetPoints();
+  const [cost, setCost] = useState(50);
+  const [currencyName, setCurrencyName] = useState("ВБ");
+  const { balance, refreshVetcoins } = useVetPoints();
+
+  useEffect(() => {
+    void apiMedicalAnalyzerPricing()
+      .then((p) => {
+        setCost(Number(p.cost) || 50);
+        setCurrencyName((p.currencyDisplayName || "ВБ").trim() || "ВБ");
+      })
+      .catch(() => {
+        /* оставим дефолт */
+      });
+  }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -25,14 +36,8 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
   };
 
   const analyzeData = async () => {
-    if (balance < ANALYZER_COST) {
-      alert(`Недостаточно ВетБаллов! Требуется: ${ANALYZER_COST} ВБ, Доступно: ${balance} ВБ`);
-      return;
-    }
-
-    const success = await spendServer({ action: "TOOL_ANALYZER" });
-    if (!success) {
-      alert("Не удалось списать VetCoin или недостаточно средств на сервере");
+    if (balance < cost) {
+      alert(`Недостаточно VetCoin! Требуется: ${cost} ${currencyName}, Доступно: ${balance} ${currencyName}`);
       return;
     }
 
@@ -47,6 +52,11 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
         files: uploadedFiles,
       });
       setResult(r);
+      await refreshVetcoins();
+      if (!r.charged) {
+        // Показываем предупреждение, но результат сохраняем на экране.
+        alert("AI‑анализ выполнен, но результат пустой/неинформативный — списания не было.");
+      }
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Не удалось выполнить AI-анализ");
     } finally {
@@ -259,7 +269,7 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
             disabled={
               analyzing ||
               (analysisType === "anamnesis" ? (!anamnesis.trim() && uploadedFiles.length === 0) : uploadedFiles.length === 0) ||
-              balance < ANALYZER_COST
+              balance < cost
             }
             className="w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3.5 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
           >
@@ -273,15 +283,15 @@ export default function MedicalAnalyzer({ onBack }: MedicalAnalyzerProps) {
                 <Brain className="w-5 h-5" />
                 Начать AI-анализ
                 <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm">
-                  {ANALYZER_COST} ВБ
+                  {cost} {currencyName}
                 </span>
               </>
             )}
           </button>
 
-          {balance < ANALYZER_COST && !analyzing && (
+          {balance < cost && !analyzing && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 mt-3">
-              ⚠️ Недостаточно ВетБаллов. Требуется минимум {ANALYZER_COST} ВБ
+              ⚠️ Недостаточно {currencyName}. Требуется минимум {cost} {currencyName}
             </div>
           )}
         </div>

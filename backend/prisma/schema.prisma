@@ -64,6 +64,12 @@ enum ModerationSanction {
   LIFETIME_BAN
 }
 
+enum AiMedicalAnalyzerRunStatus {
+  SUCCESS
+  EMPTY
+  ERROR
+}
+
 model User {
   id             String          @id @default(cuid())
   email          String          @unique
@@ -122,6 +128,30 @@ model User {
   totpEnabled Boolean @default(false)
 
   auditLogs AuditLog[] @relation("AuditActor")
+
+  aiMedicalAnalyzerRuns AiMedicalAnalyzerRun[]
+}
+
+model AiMedicalAnalyzerRun {
+  id        String                   @id @default(cuid())
+  userId    String
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String                   // 'anamnesis' | 'imaging'
+  createdAt DateTime                 @default(now())
+
+  provider  String
+  model     String
+  imagesCount Int                    @default(0)
+
+  status    AiMedicalAnalyzerRunStatus
+  errorMessage String?
+  resultJson Json?
+
+  cost      Int                      @default(0)
+  charged   Boolean                  @default(false)
+  balanceAfter Int?
+
+  @@index([userId, createdAt])
 }
 
 model AuditLog {
