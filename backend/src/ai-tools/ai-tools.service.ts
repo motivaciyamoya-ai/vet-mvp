@@ -262,8 +262,9 @@ async function callOpenAiVisionJson(opts: {
     ],
   };
 
+  // Держим таймаут ниже типичных proxy timeout (60s), чтобы UI не висел до "сервер не отвечает".
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 120_000);
+  const t = setTimeout(() => ctrl.abort(), 55_000);
   let res: Response;
   try {
     res = await fetch(url, {
@@ -278,7 +279,7 @@ async function callOpenAiVisionJson(opts: {
   } catch (e: unknown) {
     const msg =
       e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
-        ? 'OpenAI не ответил за 120 секунд. Попробуйте позже или уменьшите количество изображений.'
+        ? 'OpenAI не ответил за ~55 секунд. Попробуйте позже или уменьшите количество изображений.'
         : `Не удалось связаться с OpenAI: ${e instanceof Error ? e.message : String(e)}`;
     throw new BadRequestException(msg);
   } finally {
@@ -333,8 +334,9 @@ async function callOllamaVisionJson(opts: {
     ],
   };
 
+  // Держим таймаут ниже типичных proxy timeout (60s), чтобы UI не висел до "сервер не отвечает".
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 120_000);
+  const t = setTimeout(() => ctrl.abort(), 55_000);
   let res: Response;
   try {
     res = await fetch(`${base}/api/chat`, {
@@ -346,7 +348,7 @@ async function callOllamaVisionJson(opts: {
   } catch (e: unknown) {
     const msg =
       e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
-        ? 'Ollama не ответила за 120 секунд. Решение: выберите более лёгкую модель, уменьшите max images или добавьте RAM/swap.'
+        ? 'Ollama не ответила за ~55 секунд. Решение: выберите более лёгкую модель, уменьшите max images или добавьте RAM/swap.'
         : `Не удалось связаться с Ollama (${base}): ${e instanceof Error ? e.message : String(e)}`;
     throw new BadRequestException(msg);
   } finally {
