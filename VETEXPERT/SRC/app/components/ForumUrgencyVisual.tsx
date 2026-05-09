@@ -99,9 +99,12 @@ export function ForumUrgencyBadgeOnGradient({
 export function ForumUrgencyDisc({
   level,
   className = "",
+  iconClassName,
 }: {
   level: ForumUrgencyLevel;
   className?: string;
+  /** По умолчанию крупная иконка для карточек; для плотных таблиц передайте `w-3.5 h-3.5`. */
+  iconClassName?: string;
 }) {
   const grad =
     level === "critical"
@@ -115,7 +118,11 @@ export function ForumUrgencyDisc({
         level === "critical" ? "vc-urgency-critical-disc" : ""
       } ${className}`.trim()}
     >
-      <ForumUrgencyIcon level={level} accent="onDark" className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+      <ForumUrgencyIcon
+        level={level}
+        accent="onDark"
+        className={iconClassName ?? "w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7"}
+      />
     </div>
   );
 }

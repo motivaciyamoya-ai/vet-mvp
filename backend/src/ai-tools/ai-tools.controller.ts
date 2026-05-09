@@ -71,6 +71,8 @@ export class AiToolsController {
     const anamnesisText = (body.anamnesisText ?? '').trim();
     const safeFiles = (files ?? []).filter(Boolean);
 
+    await this.ai.assertMedicalAnalyzerEnabled();
+
     if (safeFiles.some((f) => (f.size ?? 0) > MAX_FILE_BYTES)) {
       throw new BadRequestException(`Файл слишком большой. Максимум ${MAX_FILE_MB}MB.`);
     }

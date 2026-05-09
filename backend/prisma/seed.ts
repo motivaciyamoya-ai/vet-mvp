@@ -341,18 +341,34 @@ async function main() {
           ...(extras?.vetCoinBalance !== undefined ? { vetCoinBalance: extras.vetCoinBalance } : {}),
         },
       });
-      await prisma.profile.update({
-        where: { userId: u.id },
-        data: {
-          birthDate,
-          verification,
-          ...(extras?.avatarUrl !== undefined ? { avatarUrl: extras.avatarUrl } : {}),
-          displayName,
-          city,
-          countryId: countryUse,
-          jobTitleId: jobUse,
-        },
-      });
+      const existingProfile = await prisma.profile.findUnique({ where: { userId: u.id } });
+      if (!existingProfile) {
+        await prisma.profile.create({
+          data: {
+            userId: u.id,
+            displayName,
+            city,
+            countryId: countryUse,
+            jobTitleId: jobUse,
+            verification,
+            birthDate,
+            avatarUrl: extras?.avatarUrl,
+          },
+        });
+      } else {
+        await prisma.profile.update({
+          where: { userId: u.id },
+          data: {
+            birthDate,
+            verification,
+            ...(extras?.avatarUrl !== undefined ? { avatarUrl: extras.avatarUrl } : {}),
+            displayName,
+            city,
+            countryId: countryUse,
+            jobTitleId: jobUse,
+          },
+        });
+      }
     }
     return u;
   }

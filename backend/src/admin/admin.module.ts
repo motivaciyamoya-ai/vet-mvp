@@ -9,6 +9,7 @@ import { VetEventsModule } from '../vet-events/vet-events.module';
 import { ModerationModule } from '../moderation/moderation.module';
 import { LiveTrafficModule } from '../live-traffic/live-traffic.module';
 import { AdminTotpGuard } from './guards/admin-totp.guard';
+import { AdminAiToolsService } from './admin-ai-tools.service';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { AdminTotpGuard } from './guards/admin-totp.guard';
     LiveTrafficModule,
   ],
   controllers: [AdminController, AdminSecurityController],
-  providers: [AdminService, AdminDashboardService, AdminTotpGuard],
-  exports: [AdminService, AdminDashboardService],
+  providers: [AdminService, AdminDashboardService, AdminTotpGuard, AdminAiToolsService],
+  exports: [AdminService, AdminDashboardService, AdminAiToolsService],
 })
 export class AdminModule {}

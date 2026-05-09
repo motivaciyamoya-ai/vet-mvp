@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -31,43 +32,80 @@ export class UsersService {
     private readonly moderation: ModerationService,
   ) {}
 
+  /**
+   * Учётка без Profile (импорт/ручной INSERT) ломала вход: логин успешен, а GET /users/me — 400 и фронт сбрасывал токены.
+   */
+  private async ensureMinimalProfile(userId: string, email: string): Promise<void> {
+    const country =
+      (await this.prisma.country.findUnique({ where: { code: 'RU' } })) ??
+      (await this.prisma.country.findFirst({ orderBy: { code: 'asc' } }));
+    const jobTitle =
+      (await this.prisma.jobTitle.findFirst({
+        where: { nameRu: 'Врач ветеринарной медицины' },
+      })) ?? (await this.prisma.jobTitle.findFirst({ orderBy: { id: 'asc' } }));
+    if (!country || !jobTitle) {
+      throw new InternalServerErrorException(
+        'Справочники стран или должностей пусты. Выполните миграции и seed базы данных.',
+      );
+    }
+    const local = email.includes('@') ? email.split('@')[0]!.trim().slice(0, 80) : email.trim().slice(0, 80);
+    const displayName = local.length > 0 ? local : 'Пользователь';
+    await this.prisma.profile.create({
+      data: {
+        userId,
+        displayName,
+        city: '—',
+        countryId: country.id,
+        jobTitleId: jobTitle.id,
+      },
+    });
+  }
+
   async me(userId: string) {
     await this.moderation.maybeClearExpiredSanctions(userId);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        emailVerified: true,
-        totpEnabled: true,
-        vetCoinBalance: true,
-        createdAt: true,
-        moderationStatus: true,
-        moderationUntil: true,
-        moderationReasonPublic: true,
-        lastSanctionKind: true,
-        lastSanctionAt: true,
-        profile: {
-          select: {
-            countryId: true,
-            jobTitleId: true,
-            displayName: true,
-            city: true,
-            avatarUrl: true,
-            verification: true,
-            country: { select: { nameRu: true } },
-            jobTitle: { select: { nameRu: true } },
-          },
+    const userSelect = {
+      id: true,
+      email: true,
+      role: true,
+      emailVerified: true,
+      totpEnabled: true,
+      vetCoinBalance: true,
+      createdAt: true,
+      moderationStatus: true,
+      moderationUntil: true,
+      moderationReasonPublic: true,
+      lastSanctionKind: true,
+      lastSanctionAt: true,
+      profile: {
+        select: {
+          countryId: true,
+          jobTitleId: true,
+          displayName: true,
+          city: true,
+          birthDate: true,
+          avatarUrl: true,
+          verification: true,
+          country: { select: { nameRu: true } },
+          jobTitle: { select: { nameRu: true } },
         },
       },
+    } as const;
+
+    let user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: userSelect,
     });
     if (!user) throw new NotFoundException('Пользователь не найден');
     if (!user.profile) {
-      throw new BadRequestException(
-        'Профиль пользователя не найден. Обратитесь в поддержку или повторите попытку позже.',
-      );
+      await this.ensureMinimalProfile(user.id, user.email);
+      user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: userSelect,
+      });
+    }
+    if (!user?.profile) {
+      throw new InternalServerErrorException('Не удалось создать профиль пользователя. Обратитесь к администратору.');
     }
 
     const [

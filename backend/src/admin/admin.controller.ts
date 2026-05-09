@@ -58,6 +58,8 @@ import { AuditService } from '../audit/audit.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { SecurityPoliciesService } from '../security/security-policies.service';
 import { AdminTotpGuard } from './guards/admin-totp.guard';
+import { AdminAiToolsService } from './admin-ai-tools.service';
+import { AdminAiToolsConfigDto } from './dto/admin-ai-tools.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -75,6 +77,7 @@ export class AdminController {
     private readonly audit: AuditService,
     private readonly alerts: AlertsService,
     private readonly policies: SecurityPoliciesService,
+    private readonly aiToolsAdmin: AdminAiToolsService,
   ) {}
 
   @Get('stats')
@@ -104,6 +107,30 @@ export class AdminController {
   @Get('settings')
   siteSettingsList() {
     return this.dashboard.siteSettings();
+  }
+
+  /** Настройки AI (медицинский анализатор и провайдеры); значения в SiteSetting с ключами ai.* */
+  @Get('ai-tools/config')
+  getAiToolsConfig() {
+    return this.aiToolsAdmin.getAiToolsConfig();
+  }
+
+  @Put('ai-tools/config')
+  async putAiToolsConfig(
+    @Body() dto: AdminAiToolsConfigDto,
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+  ) {
+    const out = await this.aiToolsAdmin.putAiToolsConfig(dto);
+    await this.audit.log({
+      action: 'admin.ai_tools.put',
+      actorUserId: user.id,
+      actorEmail: user.email,
+      details: { keys: Object.keys(dto).filter((k) => (dto as Record<string, unknown>)[k] !== undefined) },
+      ip: req.ip,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+    });
+    return out;
   }
 
   @Put('settings/:key')

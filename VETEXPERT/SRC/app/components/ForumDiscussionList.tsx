@@ -40,23 +40,23 @@ export default function ForumDiscussionList({
       tone === "hot" ? "sm:hover:bg-red-50/50" : "sm:hover:bg-emerald-50/45";
 
     return (
-      <div className="text-sm">
-        {/* Шапка в стиле классической доски объявлений */}
+      <div className="text-xs">
+        {/* Шапка — плотная сетка */}
         <div
-          className={`hidden sm:grid sm:grid-cols-[44px_minmax(0,1fr)_6.75rem_minmax(0,12.75rem)] ${theadGradient} text-white shadow-sm`}
+          className={`hidden sm:grid sm:grid-cols-[32px_minmax(0,1fr)_4.5rem_minmax(0,10rem)] ${theadGradient} text-white shadow-sm`}
         >
-          <div className="px-3 py-2.5 border-r border-white/15 flex items-center justify-center">
+          <div className="px-1.5 py-1 border-r border-white/15 flex items-center justify-center">
             <span className="sr-only">Статус</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">Ст.</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-white/80">Ст.</span>
           </div>
-          <div className="px-3 py-2.5 border-r border-white/15 text-[11px] font-semibold uppercase tracking-wide flex items-center">
+          <div className="px-2 py-1 border-r border-white/15 text-[10px] font-semibold uppercase tracking-wide flex items-center">
             Тема / автор
           </div>
-          <div className="px-3 py-2.5 border-r border-white/15 text-[11px] font-semibold uppercase tracking-wide text-right flex items-center justify-end">
-            Статистика
+          <div className="px-1.5 py-1 border-r border-white/15 text-[10px] font-semibold uppercase tracking-wide text-right flex items-center justify-end">
+            Стат.
           </div>
-          <div className="px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide flex items-center">
-            Последнее сообщение
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide flex items-center truncate">
+            Последнее
           </div>
         </div>
 
@@ -64,7 +64,7 @@ export default function ForumDiscussionList({
           {discussions.map((discussion, rowIdx) => (
             <div
               key={String(discussion.id)}
-              className={`grid grid-cols-[36px_1fr] sm:grid-cols-[44px_minmax(0,1fr)_6.75rem_minmax(0,12.75rem)] gap-x-2 gap-y-1.5 px-2.5 sm:px-0 py-2.5 sm:py-0 sm:items-stretch cursor-pointer transition-colors ${
+              className={`grid grid-cols-[32px_1fr] sm:grid-cols-[32px_minmax(0,1fr)_4.5rem_minmax(0,10rem)] gap-x-1.5 gap-y-1 px-2 sm:px-0 py-2 sm:py-0 sm:items-stretch cursor-pointer transition-colors ${
                 discussion.isClosed
                   ? "bg-emerald-50/35 hover:bg-emerald-50/65"
                   : discussion.isHot && !discussion.isClosed
@@ -83,71 +83,79 @@ export default function ForumDiscussionList({
                 }
               }}
             >
-              <div className="col-start-1 row-start-1 flex justify-center sm:justify-center sm:border-r sm:border-slate-100 sm:py-2.5 pt-0.5">
+              <div className="col-start-1 row-start-1 flex justify-center sm:justify-center sm:border-r sm:border-slate-100 sm:py-1.5 pt-0.5">
                 {discussion.isClosed ? (
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-teal-600 shadow-md ring-2 ring-white">
-                    <CheckCircle className="w-4 h-4 text-white" />
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-teal-600 shadow-sm ring-1 ring-white">
+                    <CheckCircle className="w-3.5 h-3.5 text-white" />
                   </div>
                 ) : discussion.isHot && discussion.urgency ? (
-                  <ForumUrgencyDisc level={discussion.urgency} className="w-9 h-9 ring-2 ring-white shadow-md" />
+                  <ForumUrgencyDisc
+                    level={discussion.urgency}
+                    className="w-7 h-7 ring-1 ring-white !shadow-sm"
+                    iconClassName="w-3.5 h-3.5"
+                  />
                 ) : (
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-teal-50 border border-emerald-200/90 shadow-sm">
-                    <MessageSquare className="w-4 h-4 text-emerald-700" />
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-teal-50 border border-emerald-200/90 shadow-sm">
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
                   </div>
                 )}
               </div>
 
-              <div className="col-start-2 row-start-1 min-w-0 sm:col-start-2 sm:px-3 sm:py-2.5 sm:border-r sm:border-slate-100">
-                <div className="flex flex-wrap items-center gap-1.5 mb-1">
+              <div className="col-start-2 row-start-1 min-w-0 sm:col-start-2 sm:px-2 sm:py-1.5 sm:border-r sm:border-slate-100">
+                <div className="flex flex-wrap items-center gap-1 mb-0.5">
                   {discussion.isClosed && (
-                    <span className="px-1.5 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-bold uppercase shadow-sm">
+                    <span className="px-1 py-0.5 rounded bg-emerald-700 text-white text-[9px] font-bold uppercase shadow-sm leading-none">
                       Решена
                     </span>
                   )}
                   {discussion.isHot && !discussion.isClosed && discussion.urgency && (
-                    <ForumUrgencyBadge level={discussion.urgency} />
+                    <ForumUrgencyBadge
+                      level={discussion.urgency}
+                      badgeClassName="!px-1 !py-0 !text-[9px] !gap-0.5 !rounded"
+                      iconClassName="w-2.5 h-2.5"
+                    />
                   )}
-                  <span className="text-[11px] text-slate-600 bg-white border border-slate-200/90 px-1.5 py-0.5 rounded-md font-medium shadow-sm">
+                  <span className="text-[10px] text-slate-600 bg-white border border-slate-200/90 px-1 py-0.5 rounded font-medium leading-none">
                     {discussion.category}
                   </span>
                   {discussion.coverThumb ? (
-                    <span className="sm:hidden ml-auto shrink-0 w-11 h-11 rounded-lg border border-slate-200 overflow-hidden shadow-sm">
+                    <span className="sm:hidden ml-auto shrink-0 w-9 h-9 rounded-md border border-slate-200 overflow-hidden shadow-sm">
                       <img src={assetUrl(discussion.coverThumb)} alt="" loading="lazy" className="w-full h-full object-cover" />
                     </span>
                   ) : null}
                 </div>
                 {discussion.isClosed && discussion.solvedBy && (
-                  <div className="flex items-center gap-1.5 mb-1.5 text-xs text-emerald-900">
-                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-500" aria-hidden />
+                  <div className="flex items-center gap-1 mb-1 text-[10px] text-emerald-900">
+                    <Sparkles className="w-3 h-3 shrink-0 text-amber-500" aria-hidden />
                     <UserAvatar
                       avatarUrl={discussion.solvedBy.avatarUrl}
                       label={discussion.solvedBy.name}
-                      className="w-6 h-6"
+                      className="w-5 h-5"
                       ringClassName="ring-1 ring-emerald-200"
                     />
                     <span className="truncate font-semibold">{discussion.solvedBy.name}</span>
                   </div>
                 )}
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-1.5">
                   <div className="min-w-0 flex-1">
                     <TranslatedContent
                       text={discussion.title}
                       originalLang={discussion.originalLang}
-                      className={`font-semibold text-[15px] sm:text-sm leading-snug line-clamp-2 tracking-tight ${
+                      className={`font-semibold text-[13px] sm:text-xs leading-tight line-clamp-2 tracking-tight ${
                         discussion.isHot && !discussion.isClosed ? "text-red-950" : "text-slate-900"
                       }`}
                     />
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-600">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0 text-[10px] text-slate-600 leading-tight">
                       <span className="font-medium text-slate-800">{discussion.author}</span>
                       <span className="text-slate-300">·</span>
-                      <span className="inline-flex items-center gap-0.5">
-                        <MapPin className="w-3 h-3 shrink-0 text-emerald-600/80" />
+                      <span className="inline-flex items-center gap-0.5 truncate max-w-[8rem] sm:max-w-none">
+                        <MapPin className="w-2.5 h-2.5 shrink-0 text-emerald-600/80" />
                         {discussion.location}
                       </span>
                     </div>
                   </div>
                   {discussion.coverThumb ? (
-                    <div className="hidden sm:block shrink-0 w-12 h-12 rounded-lg border border-slate-200 overflow-hidden shadow-sm mt-0.5">
+                    <div className="hidden sm:block shrink-0 w-9 h-9 rounded-md border border-slate-200 overflow-hidden shadow-sm mt-0.5">
                       <img src={assetUrl(discussion.coverThumb)} alt="" loading="lazy" className="w-full h-full object-cover" />
                     </div>
                   ) : null}
@@ -155,39 +163,39 @@ export default function ForumDiscussionList({
               </div>
 
               <div
-                className="col-span-2 col-start-1 row-start-2 sm:col-span-1 sm:col-start-3 sm:row-start-1 text-xs tabular-nums sm:text-right sm:px-3 sm:py-2.5 sm:border-r sm:border-slate-100 border-t border-slate-100 sm:border-t-0 pt-2 sm:pt-2 text-slate-700"
+                className="col-span-2 col-start-1 row-start-2 sm:col-span-1 sm:col-start-3 sm:row-start-1 text-[10px] tabular-nums sm:text-right sm:px-1.5 sm:py-1.5 sm:border-r sm:border-slate-100 border-t border-slate-100 sm:border-t-0 pt-1.5 sm:pt-0 text-slate-700"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex sm:flex-col sm:items-end gap-x-4 gap-y-1 sm:gap-y-1.5">
-                  <span className="inline-flex items-center gap-1 font-medium">
-                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="text-slate-500 sm:hidden">Ответы </span>
+                <div className="flex sm:flex-col sm:items-end gap-x-3 gap-y-0.5 sm:gap-y-0">
+                  <span className="inline-flex items-center gap-0.5 font-medium">
+                    <MessageSquare className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span className="text-slate-500 sm:hidden">Отв. </span>
                     {discussion.replies}
                   </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Eye className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="text-slate-500 sm:hidden">Просмотры </span>
+                  <span className="inline-flex items-center gap-0.5">
+                    <Eye className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span className="text-slate-500 sm:hidden">Просм. </span>
                     {discussion.views}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-emerald-800/90">
-                    <ThumbsUp className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-slate-500 sm:hidden">Лайки </span>
+                  <span className="inline-flex items-center gap-0.5 text-emerald-800/90">
+                    <ThumbsUp className="w-3 h-3 shrink-0" />
+                    <span className="text-slate-500 sm:hidden">Л. </span>
                     {discussion.likes}
                   </span>
                 </div>
               </div>
 
               <div
-                className="col-span-2 col-start-1 row-start-3 sm:col-span-1 sm:col-start-4 text-xs text-slate-600 min-w-0 sm:px-3 sm:py-2.5 border-t border-slate-100 sm:border-t-0 pt-2 sm:pt-2 group/last"
+                className="col-span-2 col-start-1 row-start-3 sm:col-span-1 sm:col-start-4 text-[10px] text-slate-600 min-w-0 sm:px-2 sm:py-1.5 border-t border-slate-100 sm:border-t-0 pt-1.5 sm:pt-0 group/last leading-snug"
                 onClick={(e) => e.stopPropagation()}
               >
                 {discussion.latestComment ? (
                   <>
-                    <p className="text-slate-800 line-clamp-2 leading-snug">{discussion.latestComment.body}</p>
-                    <p className="mt-1.5 text-[11px] text-slate-500 flex flex-wrap items-center gap-x-1">
-                      <span className="font-semibold text-slate-700">{discussion.latestComment.authorLabel}</span>
-                      <Clock className="w-3 h-3 shrink-0 text-slate-400" />
-                      <span>{discussion.latestComment.relativeTime}</span>
+                    <p className="text-slate-800 line-clamp-1 sm:line-clamp-2">{discussion.latestComment.body}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500 flex flex-wrap items-center gap-x-1 leading-tight">
+                      <span className="font-semibold text-slate-700 truncate max-w-[6rem] sm:max-w-none">{discussion.latestComment.authorLabel}</span>
+                      <Clock className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+                      <span className="tabular-nums shrink-0">{discussion.latestComment.relativeTime}</span>
                       {discussion.latestComment.authorUserId ? (
                         <>
                           <span className="text-slate-300">·</span>
@@ -200,14 +208,14 @@ export default function ForumDiscussionList({
                           </Link>
                         </>
                       ) : null}
-                      <ChevronRight className="w-4 h-4 text-emerald-500 ml-auto opacity-70 group-hover/last:translate-x-0.5 transition-transform hidden sm:inline" />
+                      <ChevronRight className="w-3.5 h-3.5 text-emerald-500 ml-auto opacity-70 group-hover/last:translate-x-0.5 transition-transform hidden sm:inline shrink-0" />
                     </p>
                   </>
                 ) : (
                   <p className="flex flex-wrap items-center gap-1">
                     <span className="text-slate-400">Обновлено</span>
                     <span className="font-semibold text-slate-800">{discussion.time}</span>
-                    <ChevronRight className="w-4 h-4 text-emerald-500 ml-auto opacity-70 hidden sm:inline" />
+                    <ChevronRight className="w-3.5 h-3.5 text-emerald-500 ml-auto opacity-70 hidden sm:inline" />
                   </p>
                 )}
               </div>

@@ -1,5 +1,12 @@
-import { BadRequestException, Injectable, NotImplementedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotImplementedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
+import { ResolvedAiRuntime, resolveAiRuntime } from './ai-tools-config';
 
 type MulterMemFile = {
   originalname: string;
@@ -55,17 +62,39 @@ function normalizeUrgency(v: unknown): AnalyzerUrgency {
 export class AiToolsService {
   constructor(
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
+  /** Текущая конфигурация (БД поверх env). */
+  async resolvedRuntime(): Promise<ResolvedAiRuntime> {
+    const rows = await this.prisma.siteSetting.findMany({
+      where: { key: { startsWith: 'ai.' } },
+    });
+    const site: Record<string, string> = {};
+    for (const r of rows) {
+      site[r.key] = r.value;
+    }
+    return resolveAiRuntime(site, this.config);
+  }
+
+  async assertMedicalAnalyzerEnabled(): Promise<void> {
+    const r = await this.resolvedRuntime();
+    if (!r.medicalAnalyzerEnabled) {
+      throw new ForbiddenException(
+        'Медицинский AI-анализатор отключён администратором. Включите его в админ-панели: AI-инструменты.',
+      );
+    }
+  }
+
   async analyzeAnamnesis(input: { userId: string; anamnesisText: string; files: MulterMemFile[] }): Promise<MedicalAnalyzerResult> {
-    const provider = (this.config.get<string>('AI_PROVIDER') ?? 'openai').trim().toLowerCase();
-    if (provider !== 'openai' && provider !== 'ollama') {
-      throw new NotImplementedException('AI_PROVIDER поддерживает openai | ollama');
+    const r = await this.resolvedRuntime();
+    if (r.provider !== 'openai' && r.provider !== 'ollama') {
+      throw new NotImplementedException('Провайдер AI должен быть openai или ollama');
     }
 
     const images = input.files
       .filter((f) => /^image\//i.test(f.mimetype))
-      .slice(0, 6)
+      .slice(0, r.maxImages)
       .map((f) => ({ name: f.originalname, dataUrl: asDataUrl(f) }));
 
     const prompt = buildPrompt({
@@ -76,15 +105,19 @@ export class AiToolsService {
     });
 
     const res =
-      provider === 'openai'
+      r.provider === 'openai'
         ? await callOpenAiVisionJson({
-            apiKey: (this.config.get<string>('OPENAI_API_KEY') ?? '').trim(),
+            apiKey: r.openaiApiKey,
+            openaiBaseUrl: r.openaiBaseUrl,
+            model: r.openaiModel,
+            temperature: r.temperature,
             prompt,
             images: images.map((x) => x.dataUrl),
           })
         : await callOllamaVisionJson({
-            baseUrl: (this.config.get<string>('OLLAMA_BASE_URL') ?? 'http://ollama:11434').trim(),
-            model: (this.config.get<string>('OLLAMA_VISION_MODEL') ?? 'llava:7b').trim(),
+            baseUrl: r.ollamaBaseUrl,
+            model: r.ollamaVisionModel,
+            temperature: r.temperature,
             prompt,
             images: images.map((x) => x.dataUrl),
           });
@@ -93,14 +126,14 @@ export class AiToolsService {
   }
 
   async analyzeImaging(input: { userId: string; notes: string; files: MulterMemFile[] }): Promise<MedicalAnalyzerResult> {
-    const provider = (this.config.get<string>('AI_PROVIDER') ?? 'openai').trim().toLowerCase();
-    if (provider !== 'openai' && provider !== 'ollama') {
-      throw new NotImplementedException('AI_PROVIDER поддерживает openai | ollama');
+    const r = await this.resolvedRuntime();
+    if (r.provider !== 'openai' && r.provider !== 'ollama') {
+      throw new NotImplementedException('Провайдер AI должен быть openai или ollama');
     }
 
     const images = input.files
       .filter((f) => /^image\//i.test(f.mimetype))
-      .slice(0, 6)
+      .slice(0, r.maxImages)
       .map((f) => ({ name: f.originalname, dataUrl: asDataUrl(f) }));
 
     if (images.length === 0) {
@@ -115,15 +148,19 @@ export class AiToolsService {
     });
 
     const res =
-      provider === 'openai'
+      r.provider === 'openai'
         ? await callOpenAiVisionJson({
-            apiKey: (this.config.get<string>('OPENAI_API_KEY') ?? '').trim(),
+            apiKey: r.openaiApiKey,
+            openaiBaseUrl: r.openaiBaseUrl,
+            model: r.openaiModel,
+            temperature: r.temperature,
             prompt,
             images: images.map((x) => x.dataUrl),
           })
         : await callOllamaVisionJson({
-            baseUrl: (this.config.get<string>('OLLAMA_BASE_URL') ?? 'http://ollama:11434').trim(),
-            model: (this.config.get<string>('OLLAMA_VISION_MODEL') ?? 'llava:7b').trim(),
+            baseUrl: r.ollamaBaseUrl,
+            model: r.ollamaVisionModel,
+            temperature: r.temperature,
             prompt,
             images: images.map((x) => x.dataUrl),
           });
@@ -181,12 +218,22 @@ function buildPrompt(input: {
   );
 }
 
-async function callOpenAiVisionJson(opts: { apiKey: string; prompt: string; images: string[] }): Promise<any> {
-  // Chat Completions API (совместимо с большинством прокси и базовых аккаунтов).
-  const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini';
+async function callOpenAiVisionJson(opts: {
+  apiKey: string;
+  openaiBaseUrl: string;
+  model: string;
+  temperature: number;
+  prompt: string;
+  images: string[];
+}): Promise<any> {
   if (!opts.apiKey?.trim()) {
-    throw new BadRequestException('AI не настроен: задайте OPENAI_API_KEY на сервере.');
+    throw new BadRequestException(
+      'AI (OpenAI) не настроен: задайте ключ в админ-панели (AI-инструменты) или переменную окружения OPENAI_API_KEY.',
+    );
   }
+
+  const base = opts.openaiBaseUrl.replace(/\/+$/, '') || 'https://api.openai.com/v1';
+  const url = `${base}/chat/completions`;
 
   const content: any[] = [{ type: 'text', text: opts.prompt }];
   for (const dataUrl of opts.images.slice(0, 6)) {
@@ -194,8 +241,8 @@ async function callOpenAiVisionJson(opts: { apiKey: string; prompt: string; imag
   }
 
   const body = {
-    model,
-    temperature: 0.2,
+    model: opts.model.trim() || 'gpt-4o-mini',
+    temperature: opts.temperature,
     response_format: { type: 'json_object' },
     messages: [
       {
@@ -205,7 +252,7 @@ async function callOpenAiVisionJson(opts: { apiKey: string; prompt: string; imag
     ],
   };
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${opts.apiKey}`,
@@ -231,12 +278,17 @@ async function callOpenAiVisionJson(opts: { apiKey: string; prompt: string; imag
   try {
     return JSON.parse(contentText);
   } catch {
-    // иногда модель возвращает уже объект в строке; но тут требуем JSON.
     throw new BadRequestException('AI вернул невалидный JSON результата.');
   }
 }
 
-async function callOllamaVisionJson(opts: { baseUrl: string; model: string; prompt: string; images: string[] }) {
+async function callOllamaVisionJson(opts: {
+  baseUrl: string;
+  model: string;
+  temperature: number;
+  prompt: string;
+  images: string[];
+}) {
   const base = opts.baseUrl.replace(/\/+$/, '');
   const imgs = opts.images.slice(0, 6).map((d) => {
     const m = /^data:([^;]+);base64,(.*)$/i.exec(d);
@@ -247,6 +299,7 @@ async function callOllamaVisionJson(opts: { baseUrl: string; model: string; prom
     model: opts.model || 'llava:7b',
     stream: false,
     format: 'json',
+    options: { temperature: opts.temperature },
     messages: [
       {
         role: 'user',
@@ -302,4 +355,3 @@ function normalizeResult(kind: 'anamnesis' | 'imaging', raw: any): MedicalAnalyz
       'Результаты AI-анализа носят рекомендательный характер и не заменяют профессионального клинического суждения.',
   };
 }
-

@@ -597,44 +597,44 @@ export default function AdminForum({ activeView }: { activeView: AdminForumActiv
           </div>
 
           <section className="rounded-lg border border-slate-200 overflow-hidden shadow-sm">
-            <div className="px-4 py-2.5 bg-gradient-to-r from-emerald-800 to-teal-800 text-white text-sm font-semibold">
+            <div className="px-3 py-1.5 bg-gradient-to-r from-emerald-800 to-teal-800 text-white text-xs font-semibold">
               Список тем
             </div>
             {!threads ? (
               <div className="bg-white p-6 text-slate-600">Загрузка…</div>
             ) : (
               <div className="overflow-x-auto bg-white">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead>
-                    <tr className="bg-slate-100 border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-600">
-                      <th className="p-3 min-w-[180px]">Тема</th>
-                      <th className="p-3 whitespace-nowrap">Раздел</th>
-                      <th className="p-3">Автор</th>
-                      <th className="p-3 text-right">Сообщ.</th>
-                      <th className="p-3 text-right">Обновлено</th>
-                      <th className="p-3 text-right">Действия</th>
+                    <tr className="bg-slate-100 border-b border-slate-200 text-left text-[10px] uppercase tracking-wide text-slate-600">
+                      <th className="px-2 py-1.5 min-w-[140px]">Тема</th>
+                      <th className="px-2 py-1.5 whitespace-nowrap">Раздел</th>
+                      <th className="px-2 py-1.5">Автор</th>
+                      <th className="px-2 py-1.5 text-right">Сообщ.</th>
+                      <th className="px-2 py-1.5 text-right">Обновлено</th>
+                      <th className="px-2 py-1.5 text-right">Действия</th>
                     </tr>
                   </thead>
                   <tbody>
                     {threads.items.map((t) => (
-                      <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50/80">
-                        <td className="p-3 max-w-xs">
-                          <div className="font-medium text-slate-900 line-clamp-2">{t.title}</div>
-                          {t.tags?.trim() ? <div className="text-[11px] text-slate-500 mt-0.5 truncate">{t.tags}</div> : null}
+                      <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50/80 align-top">
+                        <td className="px-2 py-1.5 max-w-xs">
+                          <div className="font-medium text-slate-900 line-clamp-2 leading-snug">{t.title}</div>
+                          {t.tags?.trim() ? <div className="text-[10px] text-slate-500 mt-0.5 truncate">{t.tags}</div> : null}
                         </td>
-                        <td className="p-3 whitespace-nowrap text-slate-700">{t.category.name}</td>
-                        <td className="p-3 font-mono text-[11px] text-slate-600 max-w-[140px] truncate" title={t.author.email}>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{t.category.name}</td>
+                        <td className="px-2 py-1.5 font-mono text-[10px] text-slate-600 max-w-[120px] truncate" title={t.author.email}>
                           {t.author.email}
                         </td>
-                        <td className="p-3 text-right tabular-nums">{t._count?.posts ?? "—"}</td>
-                        <td className="p-3 text-right text-xs text-slate-500 whitespace-nowrap">
+                        <td className="px-2 py-1.5 text-right tabular-nums">{t._count?.posts ?? "—"}</td>
+                        <td className="px-2 py-1.5 text-right text-[10px] text-slate-500 whitespace-nowrap leading-tight">
                           {new Date(t.updatedAt).toLocaleString("ru-RU")}
                         </td>
-                        <td className="p-3 text-right space-x-2 whitespace-nowrap">
-                          <button type="button" className="text-emerald-800 font-medium text-xs hover:underline" onClick={() => openThreadModal(t.id)}>
+                        <td className="px-2 py-1.5 text-right space-x-2 whitespace-nowrap">
+                          <button type="button" className="text-emerald-800 font-medium text-[10px] hover:underline" onClick={() => openThreadModal(t.id)}>
                             Редактор
                           </button>
-                          <button type="button" className="text-red-600 text-xs font-medium hover:underline" onClick={() => delThread(t.id)}>
+                          <button type="button" className="text-red-600 text-[10px] font-medium hover:underline" onClick={() => delThread(t.id)}>
                             Удалить
                           </button>
                         </td>
@@ -642,7 +642,7 @@ export default function AdminForum({ activeView }: { activeView: AdminForumActiv
                     ))}
                   </tbody>
                 </table>
-                <p className="p-3 text-sm text-slate-600 border-t border-slate-100 bg-slate-50/50">
+                <p className="px-2 py-1.5 text-xs text-slate-600 border-t border-slate-100 bg-slate-50/50">
                   Всего тем (с учётом поиска): <span className="font-semibold tabular-nums">{threads.total}</span>
                 </p>
               </div>
