@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -43,15 +43,15 @@ export class MonitoringController {
   @Get('monitoring/auth')
   auth(@Req() req: Request) {
     const token = (req.cookies?.[COOKIE_NAME] as string | undefined) ?? '';
-    if (!token) return { ok: false };
+    if (!token) throw new UnauthorizedException();
     try {
       const payload = this.jwt.verify(token, {
         secret: this.accessSecret(),
       }) as any;
-      if (payload?.role !== 'ADMIN' || payload?.kind !== 'monitoring') return { ok: false };
+      if (payload?.role !== 'ADMIN' || payload?.kind !== 'monitoring') throw new UnauthorizedException();
       return { ok: true };
     } catch {
-      return { ok: false };
+      throw new UnauthorizedException();
     }
   }
 

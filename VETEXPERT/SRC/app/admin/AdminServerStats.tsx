@@ -26,6 +26,7 @@ export default function AdminServerStats() {
     (async () => {
       try {
         await apiFetch("/api/admin/monitoring/session", { method: "POST" });
+        if (!cancelled) setReloadKey((x) => x + 1); // ensure iframe reload after cookie is set
       } catch (e: unknown) {
         if (!cancelled) setAuthErr(e instanceof Error ? e.message : String(e));
       }
