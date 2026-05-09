@@ -401,7 +401,7 @@ export default function AdminForum({ activeView }: { activeView: AdminForumActiv
             </button>
           </div>
 
-          {/* Блок «Добавить форум» в духе MyBB */}
+          {/* Новый раздел */}
           <section className="rounded-lg border border-slate-200 overflow-hidden shadow-sm">
             <div className="px-4 py-2.5 bg-gradient-to-r from-emerald-800 to-teal-800 text-white text-sm font-semibold">
               Добавить раздел (категорию форума)

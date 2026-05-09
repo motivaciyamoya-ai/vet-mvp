@@ -13,14 +13,17 @@ import {
   Pencil,
   Flag,
   CornerDownLeft,
+  ImagePlus,
+  Trash2,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import TranslatedContent from "./TranslatedContent";
+import ForumRenderedBody from "./ForumRenderedBody";
 import { ForumUrgencyBadgeOnGradient, ForumUrgencyIcon } from "./ForumUrgencyVisual";
 import UserAvatar from "./UserAvatar";
-import { apiFetch, assetUrl, getOrCreateForumVisitorId } from "../../lib/api";
+import { apiFetch, apiUploadThreadImage, assetUrl, getOrCreateForumVisitorId } from "../../lib/api";
 import { creatorForumTagLabels, tagsLookHot, urgencyFromTags } from "../../lib/forumTags";
 import ReportAbuseTrigger from "./ReportAbuseModal";
 import type { PublicModerationDto } from "../../lib/moderationUi";
@@ -126,6 +129,9 @@ export default function ForumTopicDetail() {
   const { user } = useAuth();
 
   const [replyText, setReplyText] = useState("");
+  /** URL вида /uploads/thread/… после успешной загрузки на сервер */
+  const [replyAttachmentUrls, setReplyAttachmentUrls] = useState<string[]>([]);
+  const [replyUploading, setReplyUploading] = useState(false);
   const [likeBusy, setLikeBusy] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
@@ -403,7 +409,8 @@ export default function ForumTopicDetail() {
     Boolean(user?.id === t.author.id) && isHotUi && !solved && hasOthersReplies;
 
   const submitReply = async () => {
-    if (!replyText.trim()) return;
+    const text = replyText.trim();
+    if (!text && replyAttachmentUrls.length === 0) return;
     if (!user) {
       navigate("/login");
       return;
@@ -412,9 +419,13 @@ export default function ForumTopicDetail() {
     try {
       await apiFetch(`/api/forum/threads/${encodeURIComponent(t.id)}/posts`, {
         method: "POST",
-        json: { body: replyText.trim() },
+        json: {
+          body: text,
+          ...(replyAttachmentUrls.length > 0 ? { attachmentUrls: replyAttachmentUrls } : {}),
+        },
       });
       setReplyText("");
+      setReplyAttachmentUrls([]);
       await loadApiThread();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Не удалось отправить ответ");
@@ -650,10 +661,10 @@ export default function ForumTopicDetail() {
             </div>
           </div>
         ) : (
-          <TranslatedContent
+          <ForumRenderedBody
             text={opener.body}
             originalLang="ru"
-            className="text-gray-800 text-sm lg:text-base xl:text-lg leading-relaxed whitespace-pre-wrap"
+            className="text-gray-800 text-sm lg:text-base xl:text-lg leading-relaxed"
           />
         )}
         <div className="mt-4 text-xs text-gray-500 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -768,7 +779,11 @@ export default function ForumTopicDetail() {
                 </div>
               ) : (
                 <>
-                  <TranslatedContent text={reply.body} originalLang="ru" className="text-gray-700 text-sm lg:text-base leading-relaxed whitespace-pre-wrap" />
+                  <ForumRenderedBody
+                    text={reply.body}
+                    originalLang="ru"
+                    className="text-gray-700 text-sm lg:text-base leading-relaxed"
+                  />
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     {user && user.id !== reply.author.id && !threadLocked ? (
                       <button
@@ -863,12 +878,62 @@ export default function ForumTopicDetail() {
               className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm lg:text-base min-h-[120px]"
               maxLength={20000}
             />
-            <div className="flex justify-between items-center gap-3">
+            <div>
+              <p className="text-sm font-medium text-gray-900 mb-2">Вложения (изображения)</p>
+              <p className="text-xs text-gray-600 mb-2">JPEG, PNG, WebP или GIF до 8 МБ, до 8 файлов.</p>
+              <div className="flex flex-wrap gap-2">
+                {replyAttachmentUrls.map((url) => (
+                  <div key={url} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group/rp">
+                    <img src={assetUrl(url)} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      aria-label="Убрать вложение"
+                      onClick={() => setReplyAttachmentUrls((prev) => prev.filter((u) => u !== url))}
+                      className="absolute inset-x-0 bottom-0 py-0.5 bg-black/55 text-white text-[10px]"
+                    >
+                      <Trash2 className="w-3 h-3 mx-auto" />
+                    </button>
+                  </div>
+                ))}
+                {replyAttachmentUrls.length < 8 && (
+                  <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 text-gray-600">
+                    <ImagePlus className="w-5 h-5" />
+                    <span className="text-[9px] px-0.5 text-center mt-0.5">Файл</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="sr-only"
+                      disabled={replyUploading || submittingReply}
+                      onChange={(e) => {
+                        const list = e.target.files;
+                        e.target.value = "";
+                        if (!list?.length || !user) return;
+                        setReplyUploading(true);
+                        void (async () => {
+                          try {
+                            for (const file of Array.from(list)) {
+                              const { url } = await apiUploadThreadImage(file);
+                              setReplyAttachmentUrls((prev) => (prev.length >= 8 ? prev : [...prev, url]));
+                            }
+                          } catch (err) {
+                            alert(err instanceof Error ? err.message : "Не удалось загрузить файл");
+                          } finally {
+                            setReplyUploading(false);
+                          }
+                        })();
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+              {replyUploading ? <p className="text-xs text-gray-500 mt-1">Загрузка…</p> : null}
+            </div>
+            <div className="flex justify-between items-center gap-3 flex-wrap">
               <span className="text-xs text-gray-500">{replyText.length}/20000</span>
               <button
                 type="button"
                 onClick={() => void submitReply()}
-                disabled={!replyText.trim() || submittingReply}
+                disabled={(!replyText.trim() && replyAttachmentUrls.length === 0) || submittingReply}
                 className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-2.5 rounded-lg font-semibold disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />

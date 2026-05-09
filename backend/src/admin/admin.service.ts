@@ -355,6 +355,59 @@ export class AdminService {
     return { ok: true };
   }
 
+  /** Иллюстрации на темах и строки /uploads/thread/… в телах постов — для раздела админки «Вложения». */
+  async forumAttachmentsOverview() {
+    const lineImageRx =
+      /^\/uploads\/thread\/[a-zA-Z0-9._-]+\.(?:jpe?g|png|webp|gif)$/i;
+
+    const extractUrlsFromBody = (body: string): string[] => {
+      const out = new Set<string>();
+      for (const raw of (body ?? '').split('\n')) {
+        const line = raw.trim();
+        if (lineImageRx.test(line)) out.add(line);
+      }
+      return [...out];
+    };
+
+    const [threadsWithCover, recentPosts] = await Promise.all([
+      this.prisma.forumThread.findMany({
+        where: { NOT: { coverImageUrls: { equals: [] } } },
+        orderBy: { updatedAt: 'desc' },
+        take: 60,
+        select: {
+          id: true,
+          title: true,
+          updatedAt: true,
+          coverImageUrls: true,
+        },
+      }),
+      this.prisma.forumPost.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 300,
+        select: {
+          id: true,
+          body: true,
+          createdAt: true,
+          threadId: true,
+          thread: { select: { title: true } },
+        },
+      }),
+    ]);
+
+    const postsWithAttachments = recentPosts
+      .map((p) => {
+        const urls = extractUrlsFromBody(p.body ?? '');
+        return { post: p, urls };
+      })
+      .filter((x) => x.urls.length > 0)
+      .slice(0, 80);
+
+    return {
+      threadCovers: threadsWithCover,
+      postsWithAttachments,
+    };
+  }
+
   articleCategories() {
     return this.prisma.articleCategory.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],

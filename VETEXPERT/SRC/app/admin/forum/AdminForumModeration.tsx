@@ -26,7 +26,7 @@ const STATUS_RU: Record<string, string> = {
   ACTION_TAKEN: "Приняты меры",
 };
 
-/** Очередь модерации MyBB для форума: жалобы по темам и постам со статусом OPEN. */
+/** Жалобы по темам и постам со статусом «Новая». */
 export default function AdminForumModeration() {
   const [items, setItems] = useState<Report[] | null>(null);
   const [err, setErr] = useState("");

@@ -221,6 +221,11 @@ export class AdminController {
     return this.admin.deleteUser(id);
   }
 
+  @Get('forum/attachments-overview')
+  forumAttachmentsOverview() {
+    return this.admin.forumAttachmentsOverview();
+  }
+
   @Get('forum/categories')
   forumCategories() {
     return this.admin.forumCategories();

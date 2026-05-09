@@ -468,8 +468,18 @@ export class ForumService {
     if (!thread) throw new NotFoundException();
     this.assertForumThreadOpen(thread);
     await this.securityPolicies.assertUserVerifiedForContent(userId);
+    const urls = sanitizeCoverImageUrls(dto.attachmentUrls ?? []);
+    const text = (dto.body ?? '').trim();
+    if (!text && urls.length === 0) {
+      throw new BadRequestException('Введите текст ответа или прикрепите изображение');
+    }
+    const body =
+      urls.length === 0 ? text : text ? `${text}\n\n${urls.join('\n')}` : urls.join('\n');
+    if (body.length > 20000) {
+      throw new BadRequestException('Сообщение с прикреплёнными файлами превышает лимит 20000 символов');
+    }
     await this.prisma.forumPost.create({
-      data: { threadId, authorId: userId, body: dto.body },
+      data: { threadId, authorId: userId, body },
     });
     await this.prisma.forumThread.update({
       where: { id: threadId },

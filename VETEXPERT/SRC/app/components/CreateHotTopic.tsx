@@ -1,7 +1,7 @@
 import { X, AlertTriangle, Coins, ImagePlus, Trash2 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { apiFetch, apiUploadThreadImage, assetUrl } from "../../lib/api";
+import { apiFetch, apiUploadThreadImage, assetUrl, getAccessToken } from "../../lib/api";
 import { ForumUrgencyIcon, forumUrgencyLabel } from "./ForumUrgencyVisual";
 import { useVetPoints } from "../contexts/VetPointsContext";
 import { useAuth } from "../contexts/AuthContext";
@@ -356,17 +356,19 @@ export default function CreateHotTopic({ onClose, initialUrgency, topicKind = "h
                       const list = e.target.files;
                       e.target.value = "";
                       if (!list?.length) return;
+                      if (!getAccessToken()) {
+                        setError("Войдите в аккаунт, чтобы загрузить изображения");
+                        navigate("/login");
+                        return;
+                      }
                       setUploadingImages(true);
                       setError("");
                       void (async () => {
                         try {
-                          let next = [...coverImageUrls];
                           for (const file of Array.from(list)) {
-                            if (next.length >= 8) break;
                             const { url } = await apiUploadThreadImage(file);
-                            next = [...next, url];
+                            setCoverImageUrls((prev) => (prev.length >= 8 ? prev : [...prev, url]));
                           }
-                          setCoverImageUrls(next);
                         } catch (err) {
                           setError(err instanceof Error ? err.message : "Не удалось загрузить изображение");
                         } finally {

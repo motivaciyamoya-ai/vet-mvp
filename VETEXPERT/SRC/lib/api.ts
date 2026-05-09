@@ -186,6 +186,10 @@ function extractApiErrorMessage(res: Response, text: string): string {
     return "Сервер временно недоступен (502/503/504). Обновите страницу через несколько секунд.";
   }
 
+  if (res.status === 413) {
+    return "Файл слишком большой для сервера (лимит тела запроса). Выберите файл меньшего размера или попросите администратора увеличить client_max_body_size.";
+  }
+
   // Nest обычно отвечает JSON вида { message, statusCode }.
   try {
     const parsed = JSON.parse(raw) as { message?: string | string[] };

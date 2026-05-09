@@ -6,7 +6,7 @@ import { ForumUrgencyBadge, ForumUrgencyDisc } from "./ForumUrgencyVisual";
 import { assetUrl } from "../../lib/api";
 import type { ForumDiscussionRow } from "../../lib/forumFeedMapping";
 
-export type ForumDiscussionListVariant = "comfortable" | "mybb";
+export type ForumDiscussionListVariant = "comfortable" | "compact";
 
 export default function ForumDiscussionList({
   discussions,
@@ -28,7 +28,7 @@ export default function ForumDiscussionList({
     );
   }
 
-  if (variant === "mybb") {
+  if (variant === "compact") {
     return (
       <div className="divide-y divide-slate-200 text-sm">
         <div className="hidden sm:grid sm:grid-cols-[40px_minmax(0,1fr)_7.5rem_minmax(0,12.5rem)] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">

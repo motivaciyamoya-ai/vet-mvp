@@ -82,7 +82,7 @@ export default function ForumCategoryPage() {
         ) : err ? (
           <div className="text-center py-12 px-4 text-red-700 text-sm">{err}</div>
         ) : (
-          <ForumDiscussionList discussions={discussions} variant="mybb" />
+          <ForumDiscussionList discussions={discussions} variant="compact" />
         )}
       </div>
     </div>

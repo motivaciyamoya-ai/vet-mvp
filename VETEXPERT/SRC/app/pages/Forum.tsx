@@ -184,7 +184,7 @@ export default function Forum() {
         </button>
       </div>
 
-      {/* Индекс разделов в стиле MyBB: шапка категории + таблица строк */}
+      {/* Индекс разделов: шапка блока + таблица строк */}
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-gradient-to-r from-emerald-700 via-emerald-700 to-teal-700 text-white">
           <h2 className="text-sm sm:text-base font-semibold tracking-tight">Разделы сообщества</h2>
@@ -314,7 +314,7 @@ export default function Forum() {
             </p>
           </div>
         ) : (
-          <ForumDiscussionList discussions={discussions} variant="mybb" />
+          <ForumDiscussionList discussions={discussions} variant="compact" />
         )}
       </div>
 
