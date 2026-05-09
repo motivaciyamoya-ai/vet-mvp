@@ -55,6 +55,20 @@ function safeTrimList(xs: unknown, max = 14): string[] {
     if (typeof v !== 'string') continue;
     const t = v.replace(/\s+/g, ' ').trim();
     if (!t) continue;
+    // Убираем типичные "шаблонные" ответы, которые модель иногда возвращает вместо реального анализа.
+    const low = t.toLowerCase();
+    const isTemplate =
+      low === 'что сделать сейчас' ||
+      low === 'что проверить дальше' ||
+      low.includes('гипотеза — почему') ||
+      low.includes('hypothesis') ||
+      low.includes('ограничения, дифдиагнозы') ||
+      low.includes('почему/на что опираешься') ||
+      low.includes('why/what') ||
+      low === 'рекомендации' ||
+      low === 'дополнительные исследования' ||
+      low === 'заметки для врача';
+    if (isTemplate) continue;
     out.push(t);
     if (out.length >= max) break;
   }
@@ -339,11 +353,15 @@ function buildPrompt(input: {
     '{',
     '  "confidence": number (0..100),',
     '  "urgency": "low"|"medium"|"high",',
-    '  "diagnosis": string[] (3–6 гипотез; каждая строка: "Гипотеза — почему/на что опираешься"),',
+    '  "diagnosis": string[] (3–6 гипотез; каждая строка должна содержать конкретику по случаю, БЕЗ шаблонов),',
     '  "recommendations": string[] (что сделать сейчас),',
     '  "additionalTests": string[] (что проверить дальше),',
     '  "notesForDoctor": string[] (ограничения, дифдиагнозы, что важно уточнить),',
     '}',
+    '',
+    'Запрещено:',
+    '- НЕ возвращай примеры/заглушки вроде "Гипотеза — почему/на что опираешься", "Что сделать сейчас", "что проверить дальше".',
+    '- НЕ повторяй названия полей ("Рекомендации", "Дополнительные исследования") как элементы массивов.',
     '',
     'Требования безопасности:',
     '- если данных недостаточно — так и скажи в diagnosis/notesForDoctor и снизь confidence.',
@@ -544,7 +562,7 @@ function normalizeResult(kind: 'anamnesis' | 'imaging', raw: any): MedicalAnalyz
 
   return {
     kind,
-    confidence,
+    confidence: diagnosis.length ? confidence : Math.min(confidence, 25),
     urgency,
     diagnosis: diagnosis.length ? diagnosis : ['Недостаточно данных для гипотез.'],
     recommendations,
