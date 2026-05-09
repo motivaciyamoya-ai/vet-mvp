@@ -83,7 +83,6 @@ export class UsersService {
           jobTitleId: true,
           displayName: true,
           city: true,
-            accountCategory: true,
           birthDate: true,
           avatarUrl: true,
           verification: true,
