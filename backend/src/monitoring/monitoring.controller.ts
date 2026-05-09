@@ -6,6 +6,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { AdminTotpGuard } from '../admin/guards/admin-totp.guard';
+import { SkipThrottle } from '@nestjs/throttler';
 
 const COOKIE_NAME = 'vet_monitoring';
 
@@ -19,6 +20,7 @@ export class MonitoringController {
    */
   @UseGuards(JwtAuthGuard, RolesGuard, AdminTotpGuard)
   @Roles(UserRole.ADMIN)
+  @SkipThrottle()
   @Post('admin/monitoring/session')
   mintSession(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const u = (req as any).user as { id: string; role: string } | undefined;
@@ -40,6 +42,7 @@ export class MonitoringController {
   }
 
   /** Called by nginx auth_request for /grafana and /prometheus access. */
+  @SkipThrottle()
   @Get('monitoring/auth')
   auth(@Req() req: Request) {
     const token = (req.cookies?.[COOKIE_NAME] as string | undefined) ?? '';
