@@ -11,9 +11,19 @@
   "templating": {
     "list": [
       {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "refresh": 1,
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "skipUrlSync": false
+      },
+      {
         "name": "instance",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
         "query": "label_values(up{job=\"node-exporter\"}, instance)",
         "current": { "text": "node-exporter:9100", "value": "node-exporter:9100" },
         "refresh": 1
@@ -21,7 +31,7 @@
       {
         "name": "container",
         "type": "query",
-        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
         "query": "label_values(container_cpu_usage_seconds_total{job=\"cadvisor\", image!=\"\", container_label_com_docker_compose_service!=\"\"}, container_label_com_docker_compose_service)",
         "includeAll": true,
         "allValue": ".*",
@@ -33,6 +43,7 @@
     {
       "type": "timeseries",
       "title": "Host CPU usage (%)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
       "targets": [
         {
@@ -45,6 +56,7 @@
     {
       "type": "timeseries",
       "title": "Host Memory used (%)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
       "targets": [
         {
@@ -57,6 +69,7 @@
     {
       "type": "timeseries",
       "title": "Host Disk usage (%) (rootfs)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
       "targets": [
         {
@@ -69,6 +82,7 @@
     {
       "type": "timeseries",
       "title": "Host Network (bytes/s)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
       "targets": [
         {
@@ -85,6 +99,7 @@
     {
       "type": "timeseries",
       "title": "Container CPU usage (cores)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 0, "y": 16, "w": 12, "h": 9 },
       "targets": [
         {
@@ -97,6 +112,7 @@
     {
       "type": "timeseries",
       "title": "Container Memory usage (bytes)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "x": 12, "y": 16, "w": 12, "h": 9 },
       "targets": [
         {
