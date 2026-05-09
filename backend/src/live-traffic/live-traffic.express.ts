@@ -16,8 +16,12 @@ function clientIp(req: Request): string {
 
 function shouldSkip(path: string): boolean {
   const p = path.split('?')[0] ?? '';
+  /** Служебный путь nginx auth_request вне /api/ (см. VETEXPERT/nginx.conf). */
+  if (p === '/__vet/monitoring-auth' || p.startsWith('/__vet/')) return true;
   if (!p.startsWith('/api')) return true;
   if (p.startsWith('/api/admin')) return true;
+  /** Nginx auth_request (+ служебное); иначе засоряет «живых» посетителей тем же IP что и пользователь. */
+  if (p.startsWith('/api/monitoring')) return true;
   if (p.startsWith('/api/docs')) return true;
   if (p.startsWith('/api/health')) return true;
   if (p === '/api') return true;

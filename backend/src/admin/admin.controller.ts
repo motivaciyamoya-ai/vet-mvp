@@ -63,7 +63,7 @@ import { AdminAiToolsConfigDto } from './dto/admin-ai-tools.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
-@SkipThrottle()
+@SkipThrottle({ short: true, medium: true, login: true })
 @UseGuards(JwtAuthGuard, RolesGuard, AdminTotpGuard)
 @Roles(UserRole.ADMIN)
 @Controller('admin')
@@ -102,6 +102,37 @@ export class AdminController {
       w = n;
     }
     return this.liveTraffic.getSnapshot(w);
+  }
+
+  /** История посещений из БД (ретеншн ~90 дней). */
+  @Get('analytics/live-traffic/history')
+  liveTrafficHistory(@Query('range') range?: string) {
+    const r = String(range ?? 'day').trim();
+    if (r !== 'day' && r !== 'week' && r !== 'month' && r !== '3m') {
+      throw new BadRequestException('Параметр range должен быть одним из: day | week | month | 3m.');
+    }
+    return this.liveTraffic.getHistory(r as 'day' | 'week' | 'month' | '3m');
+  }
+
+  /** Сводка за период: доля людей/ботов. */
+  @Get('analytics/live-traffic/summary')
+  liveTrafficSummary(@Query('range') range?: string) {
+    const r = String(range ?? 'day').trim();
+    if (r !== 'day' && r !== 'week' && r !== 'month' && r !== '3m') {
+      throw new BadRequestException('Параметр range должен быть одним из: day | week | month | 3m.');
+    }
+    return this.liveTraffic.getSummary(r as 'day' | 'week' | 'month' | '3m');
+  }
+
+  /** Топ страниц/эндпоинтов по hits за период. */
+  @Get('analytics/live-traffic/top')
+  liveTrafficTop(@Query('range') range?: string, @Query('limit') limit?: string) {
+    const r = String(range ?? 'day').trim();
+    if (r !== 'day' && r !== 'week' && r !== 'month' && r !== '3m') {
+      throw new BadRequestException('Параметр range должен быть одним из: day | week | month | 3m.');
+    }
+    const lim = limit == null ? undefined : parseInt(String(limit), 10);
+    return this.liveTraffic.getTopPaths(r as 'day' | 'week' | 'month' | '3m', lim);
   }
 
   @Get('settings')

@@ -187,6 +187,24 @@ model AuditLog {
   @@index([action])
 }
 
+/// Хранение статистики посещений (для админки) с ретеншном ~90 дней.
+/// IP сохраняем только в виде sha256-хеша (не PII), чтобы считать уникальность.
+model AdminTrafficHit {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  ipHash    String   @db.VarChar(64)
+  isBot     Boolean  @default(false)
+  botFamily String?
+
+  method    String   @db.VarChar(16)
+  path      String   @db.VarChar(2048)
+
+  @@index([createdAt])
+  @@index([ipHash])
+  @@index([isBot, createdAt])
+}
+
 model ProfileThank {
   id         String   @id @default(cuid())
   fromUserId String

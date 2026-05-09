@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -7,9 +7,9 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { AdminTotpGuard } from '../admin/guards/admin-totp.guard';
 import { SkipThrottle } from '@nestjs/throttler';
+import { MONITORING_COOKIE_NAME, monitoringAccessSecret } from './monitoring-auth.shared';
 
-const COOKIE_NAME = 'vet_monitoring';
-
+@SkipThrottle({ short: true, medium: true, login: true })
 @Controller()
 export class MonitoringController {
   constructor(private readonly jwt: JwtService) {}
@@ -20,18 +20,17 @@ export class MonitoringController {
    */
   @UseGuards(JwtAuthGuard, RolesGuard, AdminTotpGuard)
   @Roles(UserRole.ADMIN)
-  @SkipThrottle()
   @Post('admin/monitoring/session')
   mintSession(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const u = (req as any).user as { id: string; role: string } | undefined;
     const token = this.jwt.sign(
       { sub: u?.id ?? 'admin', role: 'ADMIN', kind: 'monitoring' },
       {
-        secret: this.accessSecret(),
+        secret: monitoringAccessSecret(),
         expiresIn: '12h',
       },
     );
-    res.cookie(COOKIE_NAME, token, {
+    res.cookie(MONITORING_COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
@@ -41,25 +40,9 @@ export class MonitoringController {
     return { ok: true };
   }
 
-  /** Called by nginx auth_request for /grafana and /prometheus access. */
-  @SkipThrottle()
-  @Get('monitoring/auth')
-  auth(@Req() req: Request) {
-    const token = (req.cookies?.[COOKIE_NAME] as string | undefined) ?? '';
-    if (!token) throw new UnauthorizedException();
-    try {
-      const payload = this.jwt.verify(token, {
-        secret: this.accessSecret(),
-      }) as any;
-      if (payload?.role !== 'ADMIN' || payload?.kind !== 'monitoring') throw new UnauthorizedException();
-      return { ok: true };
-    } catch {
-      throw new UnauthorizedException();
-    }
-  }
+  /**
+   * GET-проверки cookie для Grafana: см. MONITORING_AUTH_GET_PATHS + middleware в main.ts (до Nest).
+   */
 
-  private accessSecret(): string {
-    return process.env.JWT_ACCESS_SECRET || 'dev-access-secret';
-  }
 }
 

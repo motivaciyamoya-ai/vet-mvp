@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiAdminLiveTraffic, apiFetch, type AdminLiveTrafficSnapshot } from "../../lib/api";
+import {
+  apiAdminLiveTraffic,
+  apiAdminLiveTrafficHistory,
+  apiAdminLiveTrafficSummary,
+  apiAdminLiveTrafficTopPaths,
+  apiFetch,
+  type AdminLiveTrafficHistory,
+  type AdminLiveTrafficHistoryRange,
+  type AdminLiveTrafficSnapshot,
+  type AdminLiveTrafficSummary,
+  type AdminLiveTrafficTopPaths,
+} from "../../lib/api";
 import {
   ResponsiveContainer,
   BarChart,
@@ -59,6 +70,7 @@ function fmtDay(d: string | Date) {
 }
 
 const LIVE_POLL_MS = 4000;
+const HISTORY_POLL_MS = 30000;
 
 export default function AdminDashboard() {
   const [data, setData] = useState<Analytics | null>(null);
@@ -66,6 +78,13 @@ export default function AdminDashboard() {
   const [liveWindowSec, setLiveWindowSec] = useState(300);
   const [live, setLive] = useState<AdminLiveTrafficSnapshot | null>(null);
   const [liveErr, setLiveErr] = useState("");
+  const [histRange, setHistRange] = useState<AdminLiveTrafficHistoryRange>("day");
+  const [hist, setHist] = useState<AdminLiveTrafficHistory | null>(null);
+  const [histErr, setHistErr] = useState("");
+  const [histSummary, setHistSummary] = useState<AdminLiveTrafficSummary | null>(null);
+  const [histSummaryErr, setHistSummaryErr] = useState("");
+  const [topPaths, setTopPaths] = useState<AdminLiveTrafficTopPaths | null>(null);
+  const [topPathsErr, setTopPathsErr] = useState("");
 
   useEffect(() => {
     apiFetch<Analytics>("/api/admin/analytics")
@@ -118,6 +137,66 @@ export default function AdminDashboard() {
     };
   }, [liveWindowSec, data]);
 
+  useEffect(() => {
+    if (!data) return;
+    let cancelled = false;
+    const load = () => {
+      apiAdminLiveTrafficHistory(histRange)
+        .then((r) => {
+          if (!cancelled) {
+            setHist(r);
+            setHistErr("");
+          }
+        })
+        .catch((e: unknown) => {
+          if (!cancelled) {
+            setHist(null);
+            setHistErr(e instanceof Error ? e.message : String(e));
+          }
+        });
+    };
+    load();
+    const id = window.setInterval(load, HISTORY_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [histRange, data]);
+
+  useEffect(() => {
+    if (!data) return;
+    let cancelled = false;
+    const load = () => {
+      Promise.all([
+        apiAdminLiveTrafficSummary(histRange),
+        apiAdminLiveTrafficTopPaths(histRange, 20),
+      ])
+        .then(([s, top]) => {
+          if (!cancelled) {
+            setHistSummary(s);
+            setHistSummaryErr("");
+            setTopPaths(top);
+            setTopPathsErr("");
+          }
+        })
+        .catch((e: unknown) => {
+          if (!cancelled) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setHistSummary(null);
+            setTopPaths(null);
+            setHistSummaryErr(msg);
+            setTopPathsErr(msg);
+          }
+        });
+    };
+    load();
+    const id = window.setInterval(load, HISTORY_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [histRange, data]);
+
   const roleChart = useMemo(
     () =>
       (data?.usersByRole ?? []).map((r) => ({
@@ -137,6 +216,41 @@ export default function AdminDashboard() {
         })),
     [data],
   );
+
+  const histChart = useMemo(() => {
+    const pts = hist?.points ?? [];
+    const bucket = hist?.bucket ?? "minute";
+    const fmt = (iso: string) => {
+      const d = new Date(iso);
+      if (bucket === "day") return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
+      return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    };
+    return pts.map((p) => ({
+      t: fmt(p.at),
+      "Хиты": p.totalHits,
+      "Люди (уник.)": p.uniqueHumanIps,
+      "Боты (уник.)": p.uniqueBotIps,
+    }));
+  }, [hist]);
+
+  const botSharePie = useMemo(() => {
+    const s = histSummary;
+    if (!s) return [];
+    return [
+      { name: `Люди ${s.humanSharePct}%`, value: s.humanHits },
+      { name: `Боты ${s.botSharePct}%`, value: s.botHits },
+    ];
+  }, [histSummary]);
+
+  const topPathsBar = useMemo(() => {
+    const rows = topPaths?.rows ?? [];
+    return rows.map((r) => ({
+      name: String(r.path).slice(0, 44),
+      hits: r.hits,
+      people: r.humanHits,
+      bots: r.botHits,
+    }));
+  }, [topPaths]);
 
   if (error) return <p className="text-red-600">{error}</p>;
   if (!data) return <p className="text-slate-600">Загрузка аналитики…</p>;
@@ -193,20 +307,43 @@ export default function AdminDashboard() {
               reverse‑proxy задайте <code className="text-[11px] bg-white/80 px-1 rounded">TRUST_PROXY=1</code>, чтобы видеть реальный клиентский IP из{" "}
               <code className="text-[11px] bg-white/80 px-1 rounded">X‑Forwarded‑For</code>.
             </p>
+            <p className="text-slate-700 text-xs mt-2 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <span className="font-semibold">История (день / неделя / месяц)</span> хранится в БД. Если графики пустые
+              и текст ошибки про <code className="font-mono text-[11px]">AdminTrafficHit</code>: на сервере выполните{" "}
+              <code className="font-mono text-[11px]">docker compose exec backend npx prisma migrate deploy</code>,
+              затем <code className="font-mono text-[11px]">docker compose restart backend</code>. После обновления
+              кода обязательно пересоберите и <code className="font-mono text-[11px]">web</code>, и{" "}
+              <code className="font-mono text-[11px]">backend</code>.
+            </p>
           </div>
-          <label className="flex flex-col gap-1 shrink-0 text-sm">
-            <span className="text-slate-600 font-medium">Окно, сек</span>
-            <select
-              value={liveWindowSec}
-              onChange={(e) => setLiveWindowSec(Number(e.target.value))}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
-            >
-              <option value={120}>120</option>
-              <option value={300}>300 (5 мин)</option>
-              <option value={600}>600</option>
-              <option value={900}>900 (15 мин)</option>
-            </select>
-          </label>
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+            <label className="flex flex-col gap-1 shrink-0 text-sm">
+              <span className="text-slate-600 font-medium">Окно live, сек</span>
+              <select
+                value={liveWindowSec}
+                onChange={(e) => setLiveWindowSec(Number(e.target.value))}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
+              >
+                <option value={120}>120</option>
+                <option value={300}>300 (5 мин)</option>
+                <option value={600}>600</option>
+                <option value={900}>900 (15 мин)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 shrink-0 text-sm">
+              <span className="text-slate-600 font-medium">Период истории</span>
+              <select
+                value={histRange}
+                onChange={(e) => setHistRange(e.target.value as AdminLiveTrafficHistoryRange)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 min-w-[11rem]"
+              >
+                <option value="day">День</option>
+                <option value="week">Неделя</option>
+                <option value="month">Месяц</option>
+                <option value="3m">3 месяца</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {liveErr ? (
@@ -299,6 +436,162 @@ export default function AdminDashboard() {
         ) : liveErr ? null : (
           <p className="text-slate-600 text-sm">Загрузка живой статистики…</p>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">История посещений</h2>
+            <p className="text-slate-600 text-xs sm:text-sm mt-1">
+              Хранится в базе до 3 месяцев. IP сохраняются в виде хеша.
+            </p>
+          </div>
+          <label className="flex flex-col gap-1 shrink-0 text-sm">
+            <span className="text-slate-600 font-medium">Период</span>
+            <select
+              value={histRange}
+              onChange={(e) => setHistRange(e.target.value as AdminLiveTrafficHistoryRange)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
+            >
+              <option value="day">День</option>
+              <option value="week">Неделя</option>
+              <option value="month">Месяц</option>
+              <option value="3m">3 месяца</option>
+            </select>
+          </label>
+        </div>
+
+        {histErr ? (
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            {histErr}
+          </p>
+        ) : null}
+
+        {!histErr && hist ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-3 lg:col-span-2">
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={histChart}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="t" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="Хиты" stroke="#0f172a" dot={false} strokeWidth={2} />
+                    <Line type="monotone" dataKey="Люди (уник.)" stroke="#059669" dot={false} />
+                    <Line type="monotone" dataKey="Боты (уник.)" stroke="#4f46e5" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2">
+                Обновление ~{Math.round(HISTORY_POLL_MS / 1000)} с. Бакет: {hist.bucket}.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-slate-800 text-sm">Люди vs боты</p>
+                {histSummary ? (
+                  <p className="text-[11px] text-slate-500 whitespace-nowrap">
+                    хиты: {histSummary.humanHits} / {histSummary.botHits}
+                  </p>
+                ) : null}
+              </div>
+
+              {histSummaryErr ? (
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 mt-2">
+                  {histSummaryErr}
+                </p>
+              ) : null}
+
+              {histSummary ? (
+                <div className="h-[240px] mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={botSharePie}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={82}
+                        label
+                      >
+                        {botSharePie.map((_, i) => (
+                          <Cell key={i} fill={i === 0 ? "#059669" : "#4f46e5"} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 italic mt-3">Сводка пока недоступна.</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500 italic">История пока недоступна.</p>
+        )}
+
+        {!topPathsErr && topPaths ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <p className="font-semibold text-slate-800 text-sm mb-2">
+                Топ страниц/эндпоинтов (hits)
+              </p>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topPathsBar} margin={{ top: 8, right: 8, left: 0, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" angle={-20} textAnchor="end" interval={0} height={60} tick={{ fontSize: 10 }} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="hits" fill="#0f172a" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2">
+                Показано: {topPaths.rows.length} (лимит {topPaths.limit}).
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-3 py-2 border-b border-slate-100 text-sm font-semibold text-slate-800">
+                Таблица: топ эндпоинтов
+              </div>
+              <div className="overflow-x-auto max-h-[360px]">
+                <table className="w-full text-xs sm:text-sm">
+                  <thead className="bg-slate-50 text-left text-slate-600 sticky top-0">
+                    <tr>
+                      <th className="p-2">Путь</th>
+                      <th className="p-2 whitespace-nowrap">Hits</th>
+                      <th className="p-2 whitespace-nowrap">Люди</th>
+                      <th className="p-2 whitespace-nowrap">Боты</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topPaths.rows.map((r) => (
+                      <tr key={r.path} className="border-t border-slate-100 hover:bg-slate-50/80 align-top">
+                        <td className="p-2 font-mono text-[11px] text-slate-800 break-all">{r.path}</td>
+                        <td className="p-2 font-semibold text-slate-900 whitespace-nowrap">{r.hits}</td>
+                        <td className="p-2 text-emerald-800 whitespace-nowrap">{r.humanHits}</td>
+                        <td className="p-2 text-indigo-800 whitespace-nowrap">{r.botHits}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : topPathsErr ? (
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            {topPathsErr}
+          </p>
+        ) : null}
       </section>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -12,7 +12,7 @@ import { SecurityPoliciesService } from '../security/security-policies.service';
 
 @ApiTags('admin-security')
 @ApiBearerAuth()
-@SkipThrottle()
+@SkipThrottle({ short: true, medium: true, login: true })
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 @Controller('admin/security')

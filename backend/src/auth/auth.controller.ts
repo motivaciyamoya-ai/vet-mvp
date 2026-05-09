@@ -47,7 +47,7 @@ export class AuthController {
   }
 
   /** Подтверждение email по ссылке из письма / лога сервера. */
-  @SkipThrottle()
+  @SkipThrottle({ short: true, medium: true, login: true })
   @Get('verify-email')
   verifyEmail(@Query('token') token?: string) {
     return this.auth.verifyEmail(token ?? '');

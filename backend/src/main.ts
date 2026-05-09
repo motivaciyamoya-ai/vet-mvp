@@ -4,11 +4,20 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import type { NextFunction, Request, Response } from 'express';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { LiveTrafficService } from './live-traffic/live-traffic.service';
 import { createLiveTrafficMiddleware } from './live-traffic/live-traffic.express';
+import {
+  MONITORING_AUTH_GET_PATHS,
+  normalizeMonitoringAuthPath,
+  respondMonitoringAuth,
+} from './monitoring/monitoring-auth.shared';
+
+/** Совпадает со списком в monitoring-auth.shared; строка нужна чтобы `grep __vet dist/main.js` на сервере подтверждал образ. */
+const MONITORING_AUTH_PATHS_LOOKUP = new Set<string>(MONITORING_AUTH_GET_PATHS as unknown as string[]);
 import { startDefaultMetrics } from './metrics/metrics.init';
 
 function parseCorsOrigin(): boolean | string[] {
@@ -39,6 +48,25 @@ async function bootstrap() {
     app.set('trust proxy', parseInt(tp, 10));
   }
   app.use(cookieParser());
+  /** До любого роутера Nest: иначе /__vet/… даёт 404 и auth_request ломается. */
+  app.use((req: Request, res: Response, next: NextFunction): void => {
+    if (req.method !== 'GET') {
+      next();
+      return;
+    }
+    const probe = normalizeMonitoringAuthPath(req.originalUrl ?? req.url);
+    /** Явное сравнение (дубль списка) — литералы остаются в скомпилированном main.js. */
+    const isMonitoringAuth =
+      MONITORING_AUTH_PATHS_LOOKUP.has(probe) ||
+      probe === '/__vet/monitoring-auth' ||
+      probe === '/api/monitoring/auth' ||
+      probe === '/monitoring/auth';
+    if (!isMonitoringAuth) {
+      next();
+      return;
+    }
+    respondMonitoringAuth(req, res);
+  });
   app.use(createLiveTrafficMiddleware(app.get(LiveTrafficService)));
   app.useStaticAssets(uploadsRoot, { prefix: '/uploads/' });
   app.use(

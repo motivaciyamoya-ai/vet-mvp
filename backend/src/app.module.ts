@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { VeterateThrottlerGuard } from './common/guards/veterate-throttler.guard';
 import { SecurityModule } from './security/security.module';
 import { AuditModule } from './audit/audit.module';
 import { AlertsModule } from './alerts/alerts.module';
@@ -29,14 +30,17 @@ import { ModerationModule } from './moderation/moderation.module';
 import { AiToolsModule } from './ai-tools/ai-tools.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { throttlerSkipIfBypass } from './common/utils/throttle-bypass';
+
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 20 },
-      { name: 'medium', ttl: 60000, limit: 120 },
-      { name: 'login', ttl: 60_000, limit: 10 },
+      /** Раньше 20/сек легко съедалось пачкой auth_request + вкладкой админки. */
+      { name: 'short', ttl: 1000, limit: 80, skipIf: throttlerSkipIfBypass },
+      { name: 'medium', ttl: 60000, limit: 120, skipIf: throttlerSkipIfBypass },
+      { name: 'login', ttl: 60_000, limit: 10, skipIf: throttlerSkipIfBypass },
     ]),
     PrismaModule,
     SecurityModule,
@@ -65,6 +69,6 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     MetricsModule,
     MonitoringModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: VeterateThrottlerGuard }],
 })
 export class AppModule {}

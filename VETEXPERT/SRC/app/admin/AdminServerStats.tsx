@@ -10,7 +10,8 @@ export default function AdminServerStats() {
       {
         id: "host",
         label: "Host + Containers (VetConnect)",
-        url: "/grafana/d/vetconnect-host/vetconnect-host-containers?orgId=1&kiosk",
+        // Grafana за subpath часто делает редирект без завершающего «/»; для iframe это лишние запросы + auth_request.
+        url: "/grafana/d/vetconnect-host/vetconnect-host-containers/?orgId=1&kiosk",
       },
     ],
     [],
