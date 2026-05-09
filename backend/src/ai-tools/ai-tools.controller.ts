@@ -128,5 +128,10 @@ export class AiToolsController {
     const message = (body?.message ?? '').trim();
     return this.ai.roleAssistant({ userId: user.id, message });
   }
+
+  @Get('role-assistant/history')
+  async roleAssistantHistory(@CurrentUser() user: AuthUser) {
+    return this.ai.roleAssistantHistory(user.id, 250);
+  }
 }
 

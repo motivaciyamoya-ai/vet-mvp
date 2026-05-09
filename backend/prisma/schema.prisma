@@ -154,6 +154,23 @@ model AiMedicalAnalyzerRun {
   @@index([userId, createdAt])
 }
 
+model AiRoleAssistantMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  role      String   // 'user' | 'assistant'
+  body      String   @db.Text
+
+  provider  String?
+  model     String?
+  // Снимок специализации на момент сообщения (для аналитики/отладки).
+  jobTitle  String?
+
+  @@index([userId, createdAt])
+}
+
 model AuditLog {
   id          String   @id @default(cuid())
   createdAt   DateTime @default(now())

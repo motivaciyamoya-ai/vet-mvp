@@ -1,16 +1,40 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sparkles, Send, Loader } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 
-type ChatRow = { role: "user" | "assistant"; text: string };
+type ChatRow = { id?: string; role: "user" | "assistant"; text: string; createdAt?: string };
 
 export default function RoleAssistant() {
   const [rows, setRows] = useState<ChatRow[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [historyBusy, setHistoryBusy] = useState(true);
 
   const canSend = useMemo(() => message.trim().length > 0 && !busy, [message, busy]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setHistoryBusy(true);
+      setErr("");
+      try {
+        const r = await apiFetch<{ id: string; role: "user" | "assistant"; body: string; createdAt: string }[]>(
+          "/api/ai/role-assistant/history",
+        );
+        if (!cancelled) {
+          setRows(r.map((x) => ({ id: x.id, role: x.role, text: x.body, createdAt: x.createdAt })));
+        }
+      } catch (e: unknown) {
+        if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) setHistoryBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const send = async () => {
     const text = message.trim();
@@ -52,7 +76,12 @@ export default function RoleAssistant() {
       ) : null}
 
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 max-h-[360px] overflow-auto space-y-3">
-        {rows.length === 0 ? (
+        {historyBusy ? (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Loader className="w-4 h-4 animate-spin" />
+            Загружаем историю…
+          </div>
+        ) : rows.length === 0 ? (
           <div className="text-sm text-gray-600">
             Примеры:
             <ul className="list-disc pl-5 mt-2 space-y-1">

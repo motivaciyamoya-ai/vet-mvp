@@ -144,6 +144,18 @@ export class AiToolsService {
     const system = buildRoleAssistantSystemPrompt({ kind: title, displayName: profile?.displayName ?? null });
     const userPrompt = msg;
 
+    // Сохраняем сообщение пользователя (история не очищается).
+    await this.prisma.aiRoleAssistantMessage.create({
+      data: {
+        userId: input.userId,
+        role: 'user',
+        body: userPrompt,
+        provider: runtime.provider,
+        model: runtime.provider === 'openai' ? runtime.openaiModel : runtime.ollamaVisionModel,
+        jobTitle: profile?.jobTitle?.nameRu ?? null,
+      },
+    });
+
     const parsed =
       runtime.provider === 'openai'
         ? await callOpenAiChatText({
@@ -164,7 +176,30 @@ export class AiToolsService {
 
     const answer = String(parsed ?? '').trim();
     if (!answer) throw new BadRequestException('AI вернул пустой ответ. Попробуйте переформулировать запрос.');
+
+    // Сохраняем ответ ассистента.
+    await this.prisma.aiRoleAssistantMessage.create({
+      data: {
+        userId: input.userId,
+        role: 'assistant',
+        body: answer,
+        provider: runtime.provider,
+        model: runtime.provider === 'openai' ? runtime.openaiModel : runtime.ollamaVisionModel,
+        jobTitle: profile?.jobTitle?.nameRu ?? null,
+      },
+    });
+
     return { answer };
+  }
+
+  async roleAssistantHistory(userId: string, take = 200) {
+    const rows = await this.prisma.aiRoleAssistantMessage.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      take: Math.max(1, Math.min(500, take)),
+      select: { id: true, role: true, body: true, createdAt: true },
+    });
+    return rows;
   }
 
   async assertMedicalAnalyzerEnabled(kind?: 'anamnesis' | 'imaging'): Promise<void> {
