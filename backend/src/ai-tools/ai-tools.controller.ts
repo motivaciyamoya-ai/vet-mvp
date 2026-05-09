@@ -117,5 +117,16 @@ export class AiToolsController {
       files: safeFiles,
     });
   }
+
+  @Post('role-assistant')
+  async roleAssistant(@CurrentUser() user: AuthUser, @Body() body: { message?: string }) {
+    // Ассистент для админа/руководителя — бесплатный, поэтому без VetCoin.
+    // Но базовые анти-абьюз ограничения оставляем.
+    if (!user.emailVerified) {
+      throw new ForbiddenException('Подтвердите email, чтобы пользоваться AI-инструментами.');
+    }
+    const message = (body?.message ?? '').trim();
+    return this.ai.roleAssistant({ userId: user.id, message });
+  }
 }
 

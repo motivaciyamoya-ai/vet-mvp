@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { Equals, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsIn, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 /** Формат YYYY-MM-DD (как у input[type=date]). */
 const ISO_DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -39,6 +39,15 @@ export class RegisterDto {
   @ApiProperty({ description: 'ID должности из /reference/job-titles' })
   @IsString()
   jobTitleId: string;
+
+  @ApiProperty({
+    enum: ['SPECIALIST', 'BUSINESS_OWNER', 'ADMINISTRATOR'],
+    description:
+      'Категория аккаунта (НЕ роль). На доступ к админке не влияет; используется для персонализации.',
+  })
+  @IsString()
+  @IsIn(['SPECIALIST', 'BUSINESS_OWNER', 'ADMINISTRATOR'])
+  accountCategory: string;
 
   @ApiProperty({ example: '1988-07-21', description: 'День рождения, ГГГГ-ММ-ДД' })
   @IsString()

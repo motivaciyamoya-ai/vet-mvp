@@ -20,6 +20,12 @@ enum VerificationStatus {
   REJECTED
 }
 
+enum AccountCategory {
+  SPECIALIST
+  BUSINESS_OWNER
+  ADMINISTRATOR
+}
+
 enum ReportTargetType {
   THREAD
   POST
@@ -258,6 +264,7 @@ model Profile {
   userId         String              @unique
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   displayName    String
+  accountCategory AccountCategory    @default(SPECIALIST)
   /// День рождения (дата): для новых регистраций обязательна; исторические записи могут быть без даты.
   birthDate      DateTime?           @db.Date
   countryId      String

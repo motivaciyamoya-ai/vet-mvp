@@ -9,6 +9,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { VetcoinService } from '../vetcoin/vetcoin.service';
 import { ResolvedAiRuntime, resolveAiRuntime } from './ai-tools-config';
 
+type AccountCategory = 'SPECIALIST' | 'BUSINESS_OWNER' | 'ADMINISTRATOR';
+
 type MulterMemFile = {
   originalname: string;
   mimetype: string;
@@ -99,6 +101,57 @@ export class AiToolsService {
       site[r.key] = r.value;
     }
     return resolveAiRuntime(site, this.config);
+  }
+
+  /**
+   * Бесплатный ассистент для категорий "Администратор" и "Владелец бизнеса".
+   * VetCoin не списываем (это отдельный инструмент, не медицинский анализатор).
+   */
+  async roleAssistant(input: { userId: string; message: string }): Promise<{ answer: string }> {
+    const msg = input.message?.trim();
+    if (!msg) throw new BadRequestException('Введите сообщение для ассистента');
+    if (msg.length > 6_000) throw new BadRequestException('Слишком длинное сообщение (максимум ~6000 символов)');
+
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId: input.userId },
+      select: { accountCategory: true, displayName: true },
+    });
+    const cat = (profile?.accountCategory ?? 'SPECIALIST') as AccountCategory;
+    if (cat !== 'ADMINISTRATOR' && cat !== 'BUSINESS_OWNER') {
+      throw new ForbiddenException(
+        'Этот ассистент доступен только для категорий «Администратор» и «Владелец бизнеса». Выберите категорию в профиле/регистрации.',
+      );
+    }
+
+    const runtime = await this.resolvedRuntime();
+    if (runtime.provider !== 'openai' && runtime.provider !== 'ollama') {
+      throw new NotImplementedException('Провайдер AI должен быть openai или ollama');
+    }
+
+    const system = buildRoleAssistantSystemPrompt({ category: cat, displayName: profile?.displayName ?? null });
+    const userPrompt = msg;
+
+    const parsed =
+      runtime.provider === 'openai'
+        ? await callOpenAiChatText({
+            apiKey: runtime.openaiApiKey,
+            baseUrl: runtime.openaiBaseUrl,
+            model: runtime.openaiModel,
+            temperature: runtime.temperature,
+            system,
+            user: userPrompt,
+          })
+        : await callOllamaChatText({
+            baseUrl: runtime.ollamaBaseUrl,
+            model: runtime.ollamaVisionModel,
+            temperature: runtime.temperature,
+            system,
+            user: userPrompt,
+          });
+
+    const answer = String(parsed ?? '').trim();
+    if (!answer) throw new BadRequestException('AI вернул пустой ответ. Попробуйте переформулировать запрос.');
+    return { answer };
   }
 
   async assertMedicalAnalyzerEnabled(kind?: 'anamnesis' | 'imaging'): Promise<void> {
@@ -328,6 +381,30 @@ export class AiToolsService {
   }
 }
 
+function buildRoleAssistantSystemPrompt(input: { category: AccountCategory; displayName: string | null }): string {
+  const name = input.displayName ? `Пользователь: ${input.displayName}.\n` : '';
+  if (input.category === 'ADMINISTRATOR') {
+    return (
+      `${name}` +
+      `Ты — AI помощник Администратора VetConnect/ветклиники. ` +
+      `Помогаешь с регламентами, модерацией, настройками, качеством сервиса, обработкой обращений, шаблонами сообщений, чек-листами и SOP.\n` +
+      `Правила ответа:\n` +
+      `- Пиши по-русски, структурируй: короткий вывод, затем список шагов.\n` +
+      `- Если не хватает данных — задай 3–5 уточняющих вопросов.\n` +
+      `- Не придумывай факты. Не давай мед.диагнозов и назначения.\n`
+    );
+  }
+  return (
+    `${name}` +
+    `Ты — AI помощник Руководителя/владельца ветбизнеса. ` +
+    `Помогаешь с управлением клиникой: финмодель, цены, загрузка, маркетинг, персонал, KPI, NPS, процессы, продажи, расписание, стандарты.\n` +
+    `Правила ответа:\n` +
+    `- Пиши по-русски, максимально практично.\n` +
+    `- Давай варианты (минимум 2) и рекомендуй лучший с причинами.\n` +
+    `- Если не хватает данных — задай 3–5 уточняющих вопросов.\n`
+  );
+}
+
 function isEmptyAnalysis(r: MedicalAnalyzerResult): boolean {
   const onlyPlaceholder =
     r.diagnosis.length === 1 && r.diagnosis[0]?.toLowerCase().includes('недостаточно данных');
@@ -550,6 +627,124 @@ async function callOllamaVisionJson(opts: {
   } catch {
     throw new BadRequestException('AI (ollama) вернул невалидный JSON результата.');
   }
+}
+
+async function callOpenAiChatText(opts: {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  temperature: number;
+  system: string;
+  user: string;
+}): Promise<string> {
+  if (!opts.apiKey?.trim()) {
+    throw new BadRequestException(
+      'AI (OpenAI) не настроен: задайте ключ в админ-панели (AI-инструменты) или переменную окружения OPENAI_API_KEY.',
+    );
+  }
+  const base = opts.baseUrl.replace(/\/+$/, '') || 'https://api.openai.com/v1';
+  const url = `${base}/chat/completions`;
+
+  const body = {
+    model: opts.model.trim() || 'gpt-4o-mini',
+    temperature: opts.temperature,
+    messages: [
+      { role: 'system', content: opts.system },
+      { role: 'user', content: opts.user },
+    ],
+  };
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 55_000);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${opts.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e: unknown) {
+    const msg =
+      e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
+        ? 'OpenAI не ответил за ~55 секунд. Попробуйте позже.'
+        : `Не удалось связаться с OpenAI: ${e instanceof Error ? e.message : String(e)}`;
+    throw new BadRequestException(msg);
+  } finally {
+    clearTimeout(t);
+  }
+  const text = await res.text();
+  if (!res.ok) {
+    throw new BadRequestException(`AI ошибка: HTTP ${res.status} ${text.slice(0, 500)}`);
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new BadRequestException('AI вернул не-JSON ответ.');
+  }
+  const contentText = parsed?.choices?.[0]?.message?.content;
+  return typeof contentText === 'string' ? contentText.trim() : '';
+}
+
+async function callOllamaChatText(opts: {
+  baseUrl: string;
+  model: string;
+  temperature: number;
+  system: string;
+  user: string;
+}): Promise<string> {
+  const base = opts.baseUrl.replace(/\/+$/, '');
+  const body = {
+    model: opts.model || 'llava:7b',
+    stream: false,
+    options: { temperature: opts.temperature },
+    messages: [
+      { role: 'system', content: opts.system },
+      { role: 'user', content: opts.user },
+    ],
+  };
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 55_000);
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e: unknown) {
+    const msg =
+      e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
+        ? 'Ollama не ответила за ~55 секунд. Решение: выберите более лёгкую модель или добавьте RAM/swap.'
+        : `Не удалось связаться с Ollama (${base}): ${e instanceof Error ? e.message : String(e)}`;
+    throw new BadRequestException(msg);
+  } finally {
+    clearTimeout(t);
+  }
+  const text = await res.text();
+  if (!res.ok) {
+    const low = `${text ?? ''}`.toLowerCase();
+    if (low.includes('requires more system memory') || low.includes('not enough memory') || low.includes('out of memory')) {
+      throw new BadRequestException(
+        'Ollama: модели не хватает оперативной памяти. Решение: выберите более лёгкую модель или добавьте RAM/swap.',
+      );
+    }
+    throw new BadRequestException(`AI (ollama) ошибка: HTTP ${res.status} ${text.slice(0, 500)}`);
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return text.trim();
+  }
+  const contentText = parsed?.message?.content;
+  return typeof contentText === 'string' ? contentText.trim() : '';
 }
 
 function normalizeResult(kind: 'anamnesis' | 'imaging', raw: any): MedicalAnalyzerResult {

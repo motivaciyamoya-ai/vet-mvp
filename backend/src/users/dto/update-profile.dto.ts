@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 const ISO_DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -26,6 +26,15 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   jobTitleId?: string;
+
+  @ApiPropertyOptional({
+    enum: ['SPECIALIST', 'BUSINESS_OWNER', 'ADMINISTRATOR'],
+    description: 'Категория аккаунта (не роль). Используется для персонализации.',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['SPECIALIST', 'BUSINESS_OWNER', 'ADMINISTRATOR'])
+  accountCategory?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

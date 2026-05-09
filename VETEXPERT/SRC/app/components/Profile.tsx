@@ -8,6 +8,7 @@ import {
   Gift,
   Send,
   Coins,
+  Sparkles,
   Stethoscope as StethoscopeIcon,
   Camera,
 } from "lucide-react";
@@ -19,6 +20,8 @@ import VetPointsBalance from "./VetPointsBalance";
 import VetPointsStats from "./VetPointsStats";
 import BadgeStore from "./BadgeStore";
 import TransferPoints from "./TransferPoints";
+import RoleAssistant from "./RoleAssistant";
+import MedicalAnalyzerHistory from "./MedicalAnalyzerHistory";
 import { useVetPoints } from "../contexts/VetPointsContext";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -49,7 +52,7 @@ export default function Profile() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarEditUrl, setAvatarEditUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "points">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "assistant" | "points">("overview");
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState("");
   const [badgeStoreOpen, setBadgeStoreOpen] = useState(false);
@@ -64,6 +67,9 @@ export default function Profile() {
   const [editCity, setEditCity] = useState("");
   const [editCountryId, setEditCountryId] = useState("");
   const [editJobTitleId, setEditJobTitleId] = useState("");
+  const [editAccountCategory, setEditAccountCategory] = useState<"SPECIALIST" | "BUSINESS_OWNER" | "ADMINISTRATOR">(
+    "SPECIALIST",
+  );
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaveOk, setProfileSaveOk] = useState(false);
   const [profileFormErr, setProfileFormErr] = useState("");
@@ -107,9 +113,10 @@ export default function Profile() {
     setEditCity(user.city ?? "");
     setEditCountryId(user.countryId ?? "");
     setEditJobTitleId(user.jobTitleId ?? "");
+    setEditAccountCategory(user.accountCategory ?? "SPECIALIST");
     setProfileSaveOk(false);
     setProfileFormErr("");
-  }, [user?.id, user?.name, user?.city, user?.countryId, user?.jobTitleId]);
+  }, [user?.id, user?.name, user?.city, user?.countryId, user?.jobTitleId, user?.accountCategory]);
 
   const cancelAvatarCrop = () => {
     if (avatarEditUrl) URL.revokeObjectURL(avatarEditUrl);
@@ -166,6 +173,7 @@ export default function Profile() {
           city: editCity.trim(),
           countryId: editCountryId,
           jobTitleId: editJobTitleId,
+          accountCategory: editAccountCategory,
         },
       });
       await refreshProfile();
@@ -498,6 +506,16 @@ export default function Profile() {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("assistant")}
+                className={`flex-1 px-4 py-3 font-semibold text-sm lg:text-base transition-colors flex items-center justify-center gap-2 ${
+                  activeTab === "assistant" ? "bg-fuchsia-50 text-fuchsia-800 border-b-2 border-fuchsia-700" : "text-gray-600"
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                AI помощник
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("points")}
                 className={`flex-1 px-4 py-3 font-semibold text-sm lg:text-base transition-colors flex items-center justify-center gap-2 ${
                   activeTab === "points" ? "bg-amber-50 text-amber-800 border-b-2 border-amber-600" : "text-gray-600"
@@ -586,6 +604,25 @@ export default function Profile() {
                     </select>
                   </label>
 
+                  <label className="block text-sm">
+                    <span className="font-medium text-gray-800">Категория аккаунта</span>
+                    <select
+                      value={editAccountCategory}
+                      onChange={(ev) =>
+                        setEditAccountCategory(ev.target.value as "SPECIALIST" | "BUSINESS_OWNER" | "ADMINISTRATOR")
+                      }
+                      disabled={profileSaving}
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white disabled:bg-gray-50"
+                    >
+                      <option value="SPECIALIST">Специалист</option>
+                      <option value="BUSINESS_OWNER">Владелец бизнеса / руководитель</option>
+                      <option value="ADMINISTRATOR">Администратор</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Не даёт доступ к админке. Нужна для персонализации и бесплатного AI‑помощника.
+                    </p>
+                  </label>
+
                   <div className="flex flex-wrap items-center gap-3 pt-1">
                     <button
                       type="submit"
@@ -601,6 +638,8 @@ export default function Profile() {
                   {profileFormErr ? <p className="text-sm text-red-600">{profileFormErr}</p> : null}
                 </form>
               </div>
+
+              <MedicalAnalyzerHistory />
 
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-200">
                 <div className="p-4 lg:p-5 flex items-center gap-3 text-left">
@@ -623,6 +662,8 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+          ) : activeTab === "assistant" ? (
+            <RoleAssistant />
           ) : (
             <VetPointsStats />
           )}
