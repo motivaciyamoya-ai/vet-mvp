@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { apiFetch } from "../../lib/api";
 
 const PRESET_KEYS = [
@@ -26,9 +27,6 @@ export default function AdminVetCoins() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [adjustEmail, setAdjustEmail] = useState("");
-  const [adjustDelta, setAdjustDelta] = useState("0");
-  const [adjustReason, setAdjustReason] = useState("Коррекция администратором");
 
   const load = useCallback(() => {
     setErr("");
@@ -79,28 +77,6 @@ export default function AdminVetCoins() {
     alert("Сохранено");
   };
 
-  const doAdjust = async () => {
-    const delta = parseInt(adjustDelta, 10);
-    if (!adjustEmail.trim() || !adjustReason.trim() || !Number.isFinite(delta) || delta === 0) {
-      alert("Укажите email, ненулевое целое delta и причину");
-      return;
-    }
-    try {
-      await apiFetch("/api/admin/vetcoin/adjust", {
-        method: "POST",
-        json: {
-          email: adjustEmail.trim().toLowerCase(),
-          delta,
-          reason: adjustReason.trim(),
-        },
-      });
-      setAdjustDelta("0");
-      alert("Готово");
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Ошибка");
-    }
-  };
-
   const presetsWithValues = useMemo(() => PRESET_KEYS, []);
 
   return (
@@ -110,39 +86,16 @@ export default function AdminVetCoins() {
         <p className="text-slate-600 text-sm mt-1 max-w-3xl">
           Настройки хранятся в таблице <code className="bg-slate-100 px-1 rounded">SiteSetting</code> с префиксом{" "}
           <code className="bg-slate-100 px-1 rounded">vetcoin.</code>. Реальные начисления сейчас выполняются при регистрации и
-          активности на форуме (создание темы и ответ). Остальные поля зарезервированы под развитие.
+          активности на форуме (создание темы и ответ). Остальные поля зарезервированы под развитие. Ручная корректировка
+          баланса пользователя — в разделе{" "}
+          <Link to="/admin/users" className="text-emerald-700 font-semibold hover:underline">
+            Пользователи
+          </Link>
+          .
         </p>
       </div>
 
       {err && <p className="text-red-600">{err}</p>}
-
-      <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-        <h2 className="font-semibold text-slate-800">Корректировка баланса пользователя</h2>
-        <div className="grid gap-2 sm:grid-cols-2 max-w-2xl">
-          <input
-            className="border rounded-lg px-3 py-2 text-sm font-mono"
-            placeholder="email пользователя"
-            value={adjustEmail}
-            onChange={(e) => setAdjustEmail(e.target.value)}
-          />
-          <input
-            type="number"
-            className="border rounded-lg px-3 py-2 text-sm"
-            placeholder="delta (+/-)"
-            value={adjustDelta}
-            onChange={(e) => setAdjustDelta(e.target.value)}
-          />
-        </div>
-        <textarea
-          className="w-full border rounded-lg px-3 py-2 text-sm max-w-2xl"
-          rows={2}
-          value={adjustReason}
-          onChange={(e) => setAdjustReason(e.target.value)}
-        />
-        <button type="button" className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm" onClick={doAdjust}>
-          Применить
-        </button>
-      </section>
 
       <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
         <div className="flex flex-wrap justify-between gap-2">
