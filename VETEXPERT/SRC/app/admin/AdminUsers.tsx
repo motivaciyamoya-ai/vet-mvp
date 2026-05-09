@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { Coins, Pencil, Search, Shield, Trash2, UserRound } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 
 type UserRow = {
   id: string;
   email: string;
   role: string;
+  vetCoinBalance: number;
   profile: {
     displayName: string;
     city: string;
@@ -16,6 +18,10 @@ type UserRow = {
 
 const ROLES = ["SPECIALIST", "MODERATOR", "ADMIN"] as const;
 const VER = ["NONE", "PENDING", "VERIFIED", "REJECTED"] as const;
+
+function formatCoins(n: number) {
+  return Number.isFinite(n) ? n.toLocaleString("ru-RU") : "0";
+}
 
 export default function AdminUsers() {
   const [q, setQ] = useState("");
@@ -36,6 +42,11 @@ export default function AdminUsers() {
     city: "",
     verification: "NONE",
   });
+  const [vcNewBalance, setVcNewBalance] = useState("");
+  const [vcAdminPassword, setVcAdminPassword] = useState("");
+  const [vcReason, setVcReason] = useState("");
+  const [vcErr, setVcErr] = useState("");
+  const [vcSaving, setVcSaving] = useState(false);
 
   const load = useCallback(() => {
     setErr("");
@@ -62,6 +73,10 @@ export default function AdminUsers() {
 
   const openEdit = (u: UserRow) => {
     setEditing(u);
+    setVcErr("");
+    setVcAdminPassword("");
+    setVcReason("");
+    setVcNewBalance(String(u.vetCoinBalance ?? 0));
     setForm({
       email: u.email,
       role: u.role,
@@ -93,6 +108,45 @@ export default function AdminUsers() {
     }
   };
 
+  const saveVetcoin = async () => {
+    if (!editing) return;
+    const n = parseInt(vcNewBalance.replace(/\s/g, ""), 10);
+    if (!Number.isFinite(n) || n < 0 || n > 2147483647) {
+      setVcErr("Введите целое число от 0 до 2 147 483 647");
+      return;
+    }
+    if (!vcAdminPassword.trim()) {
+      setVcErr("Введите ваш пароль администратора для подтверждения");
+      return;
+    }
+    setVcErr("");
+    setVcSaving(true);
+    try {
+      const res = await apiFetch<{ balance: number; previousBalance: number }>(
+        `/api/admin/users/${editing.id}/vetcoin-balance`,
+        {
+          method: "POST",
+          json: {
+            vetCoinBalance: n,
+            adminPassword: vcAdminPassword,
+            ...(vcReason.trim() ? { reason: vcReason.trim() } : {}),
+          },
+        },
+      );
+      setEditing((prev) =>
+        prev ? { ...prev, vetCoinBalance: typeof res.balance === "number" ? res.balance : n } : prev,
+      );
+      setVcAdminPassword("");
+      setVcReason("");
+      setVcNewBalance(String(res.balance ?? n));
+      void load();
+    } catch (e: unknown) {
+      setVcErr(e instanceof Error ? e.message : "Не удалось сохранить баланс");
+    } finally {
+      setVcSaving(false);
+    }
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Удалить пользователя? Связанный контент может помешать.")) return;
     try {
@@ -104,77 +158,129 @@ export default function AdminUsers() {
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Пользователи</h1>
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <input
-          className="border rounded-lg px-3 py-2 flex-1 min-w-[200px]"
-          placeholder="Поиск email / имя"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && searchFresh()}
-        />
-        <button
-          type="button"
-          className="bg-emerald-600 text-white px-4 py-2 rounded-lg"
-          onClick={searchFresh}
-        >
-          Найти
-        </button>
+    <div className="space-y-6 lg:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 text-emerald-900 px-3 py-1 text-xs font-bold uppercase tracking-wide mb-2">
+            <Shield className="w-3.5 h-3.5" aria-hidden />
+            Администрирование
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Пользователи</h1>
+          <p className="text-slate-600 mt-1 text-sm sm:text-base max-w-2xl">
+            Поиск по email и имени, роли и профиль. Баланс VetCoin виден в таблице; изменение баланса — только с вашим паролем.
+          </p>
+        </div>
       </div>
-      {err && <p className="text-red-600 mb-2">{err}</p>}
+
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm ring-1 ring-emerald-900/5 p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden />
+            <input
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400"
+              placeholder="Поиск: email или отображаемое имя"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && searchFresh()}
+            />
+          </div>
+          <button
+            type="button"
+            className="inline-flex justify-center items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold px-5 py-2.5 text-sm shadow-md shadow-emerald-900/15 hover:from-emerald-700 hover:to-teal-700 transition-all"
+            onClick={searchFresh}
+          >
+            <Search className="w-4 h-4" />
+            Найти
+          </button>
+        </div>
+      </div>
+
+      {err && (
+        <div className="rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">{err}</div>
+      )}
+
       {!data ? (
-        <p>Загрузка…</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-600">Загрузка…</div>
       ) : (
         <>
-          <div className="bg-white rounded-xl border overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b">
-                <tr>
-                  <th className="text-left p-3">Email</th>
-                  <th className="text-left p-3">Роль</th>
-                  <th className="text-left p-3">Имя</th>
-                  <th className="text-left p-3">Город</th>
-                  <th className="text-right p-3">Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((u) => (
-                  <tr key={u.id} className="border-t hover:bg-slate-50">
-                    <td className="p-3 font-mono text-xs">{u.email}</td>
-                    <td className="p-3">{u.role}</td>
-                    <td className="p-3">{u.profile?.displayName ?? "—"}</td>
-                    <td className="p-3">{u.profile?.city ?? "—"}</td>
-                    <td className="p-3 text-right space-x-2">
-                      <button
-                        type="button"
-                        className="text-emerald-700 underline"
-                        onClick={() => openEdit(u)}
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        type="button"
-                        className="text-red-600 underline"
-                        onClick={() => remove(u.id)}
-                      >
-                        Удалить
-                      </button>
-                    </td>
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm ring-1 ring-emerald-900/5 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[720px]">
+                <thead>
+                  <tr className="bg-gradient-to-r from-slate-50 to-emerald-50/40 border-b border-slate-200">
+                    <th className="text-left p-3 sm:p-4 font-semibold text-slate-700">Пользователь</th>
+                    <th className="text-left p-3 sm:p-4 font-semibold text-slate-700">Роль</th>
+                    <th className="text-left p-3 sm:p-4 font-semibold text-slate-700">Имя / город</th>
+                    <th className="text-right p-3 sm:p-4 font-semibold text-slate-700">
+                      <span className="inline-flex items-center justify-end gap-1">
+                        <Coins className="w-4 h-4 text-amber-600" aria-hidden />
+                        VetCoin
+                      </span>
+                    </th>
+                    <th className="text-right p-3 sm:p-4 font-semibold text-slate-700">Действия</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.items.map((u) => (
+                    <tr key={u.id} className="border-t border-slate-100 hover:bg-emerald-50/30 transition-colors">
+                      <td className="p-3 sm:p-4 align-top">
+                        <div className="font-mono text-xs text-slate-800 break-all">{u.email}</div>
+                      </td>
+                      <td className="p-3 sm:p-4 align-top">
+                        <span className="inline-flex rounded-lg bg-slate-100 text-slate-800 px-2 py-0.5 text-xs font-semibold">
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="p-3 sm:p-4 align-top text-slate-700">
+                        <div className="flex items-start gap-2">
+                          <UserRound className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden />
+                          <div>
+                            <div className="font-medium text-slate-900">{u.profile?.displayName ?? "—"}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">{u.profile?.city ?? "—"}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 sm:p-4 align-top text-right">
+                        <span className="inline-flex items-center justify-end gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold tabular-nums px-3 py-1.5 text-xs sm:text-sm shadow-sm">
+                          <Coins className="w-3.5 h-3.5 opacity-90" aria-hidden />
+                          {formatCoins(u.vetCoinBalance ?? 0)}
+                        </span>
+                      </td>
+                      <td className="p-3 sm:p-4 align-top text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 text-emerald-700 font-semibold hover:text-emerald-900 text-xs sm:text-sm mr-3"
+                          onClick={() => openEdit(u)}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          Изменить
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 text-red-600 font-semibold hover:text-red-800 text-xs sm:text-sm"
+                          onClick={() => remove(u.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Удалить
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-slate-600">
-              Всего: {data.total}, страница {data.page}
+
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 text-sm text-slate-600">
+            <span>
+              Всего записей: <strong className="text-slate-900">{data.total}</strong>, страница{" "}
+              <strong className="text-slate-900">{data.page}</strong>
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={page <= 1}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
                 onClick={() => setPage((p) => p - 1)}
               >
                 Назад
@@ -182,7 +288,7 @@ export default function AdminUsers() {
               <button
                 type="button"
                 disabled={data.items.length < data.pageSize}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
                 onClick={() => setPage((p) => p + 1)}
               >
                 Вперёд
@@ -193,86 +299,146 @@ export default function AdminUsers() {
       )}
 
       {editing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-3 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold">Редактирование</h2>
-            <label className="block text-sm">
-              <span className="text-slate-600">Email</span>
-              <input
-                className="w-full border rounded px-2 py-1 mt-1"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-slate-600">Роль</span>
-              <select
-                className="w-full border rounded px-2 py-1 mt-1"
-                value={form.role}
-                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-              >
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="text-slate-600">Новый пароль (необязательно)</span>
-              <input
-                type="password"
-                className="w-full border rounded px-2 py-1 mt-1"
-                value={form.newPassword}
-                onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
-                placeholder="оставьте пустым, чтобы не менять"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-slate-600">Отображаемое имя</span>
-              <input
-                className="w-full border rounded px-2 py-1 mt-1"
-                value={form.displayName}
-                onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-slate-600">Город</span>
-              <input
-                className="w-full border rounded px-2 py-1 mt-1"
-                value={form.city}
-                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-slate-600">Верификация</span>
-              <select
-                className="w-full border rounded px-2 py-1 mt-1"
-                value={form.verification}
-                onChange={(e) => setForm((f) => ({ ...f, verification: e.target.value }))}
-              >
-                {VER.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                className="flex-1 bg-emerald-600 text-white py-2 rounded-lg"
-                onClick={save}
-              >
-                Сохранить
-              </button>
-              <button
-                type="button"
-                className="flex-1 border py-2 rounded-lg"
-                onClick={() => setEditing(null)}
-              >
-                Отмена
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto shadow-2xl ring-1 ring-slate-200/80 border border-white/80">
+            <div className="sticky top-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 py-4 text-white">
+              <h2 className="text-lg font-bold">Редактирование пользователя</h2>
+              <p className="text-sm text-white/85 font-mono truncate mt-0.5">{editing.email}</p>
+            </div>
+            <div className="p-5 sm:p-6 space-y-5">
+              <div className="rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50/60 p-4 space-y-3">
+                <div className="flex items-center gap-2 text-amber-950 font-bold text-sm">
+                  <Coins className="w-5 h-5 text-amber-600" aria-hidden />
+                  VetCoin — баланс
+                </div>
+                <p className="text-xs text-amber-900/90 leading-relaxed">
+                  Текущий баланс:{" "}
+                  <strong className="tabular-nums">{formatCoins(editing.vetCoinBalance ?? 0)}</strong>. Новое значение
+                  записывается в журнал начислений. Обязательно подтвердите <strong>своим паролем администратора</strong>.
+                </p>
+                <label className="block text-xs font-semibold text-amber-950">
+                  Новый баланс (целое число)
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="mt-1 w-full rounded-lg border border-amber-200/90 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                    value={vcNewBalance}
+                    onChange={(e) => setVcNewBalance(e.target.value)}
+                  />
+                </label>
+                <label className="block text-xs font-semibold text-amber-950">
+                  Ваш пароль (подтверждение)
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    className="mt-1 w-full rounded-lg border border-amber-200/90 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                    value={vcAdminPassword}
+                    onChange={(e) => setVcAdminPassword(e.target.value)}
+                    placeholder="Пароль учётной записи ADMIN"
+                  />
+                </label>
+                <label className="block text-xs font-semibold text-amber-950">
+                  Комментарий в журнале (необязательно)
+                  <input
+                    className="mt-1 w-full rounded-lg border border-amber-200/90 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                    value={vcReason}
+                    onChange={(e) => setVcReason(e.target.value)}
+                    placeholder="Например: компенсация за сбой начисления"
+                  />
+                </label>
+                {vcErr ? <p className="text-xs text-red-700 font-medium">{vcErr}</p> : null}
+                <button
+                  type="button"
+                  disabled={vcSaving}
+                  className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-2.5 text-sm shadow-md hover:from-amber-600 hover:to-orange-600 disabled:opacity-50"
+                  onClick={() => void saveVetcoin()}
+                >
+                  {vcSaving ? "Сохранение…" : "Применить баланс VetCoin"}
+                </button>
+              </div>
+
+              <div className="border-t border-slate-200 pt-5 space-y-3">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Учётная запись и профиль</h3>
+                <label className="block text-sm">
+                  <span className="text-slate-600 font-medium">Email</span>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="text-slate-600 font-medium">Роль</span>
+                  <select
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    value={form.role}
+                    onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  <span className="text-slate-600 font-medium">Новый пароль пользователя (необязательно)</span>
+                  <input
+                    type="password"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    value={form.newPassword}
+                    onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
+                    placeholder="Оставьте пустым, чтобы не менять"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="text-slate-600 font-medium">Отображаемое имя</span>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    value={form.displayName}
+                    onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="text-slate-600 font-medium">Город</span>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    value={form.city}
+                    onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="text-slate-600 font-medium">Верификация профиля</span>
+                  <select
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    value={form.verification}
+                    onChange={(e) => setForm((f) => ({ ...f, verification: e.target.value }))}
+                  >
+                    {VER.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
+                <button
+                  type="button"
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={() => setEditing(null)}
+                >
+                  Закрыть
+                </button>
+                <button
+                  type="button"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold py-2.5 shadow-md hover:from-emerald-700 hover:to-teal-700"
+                  onClick={() => void save()}
+                >
+                  Сохранить профиль
+                </button>
+              </div>
             </div>
           </div>
         </div>

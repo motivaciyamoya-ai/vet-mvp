@@ -24,6 +24,7 @@ import { AdminService } from './admin.service';
 import { AdminDashboardService } from './admin-dashboard.service';
 import { AdminPutSiteSettingDto } from './dto/admin-setting.dto';
 import { AdminPatchUserDto } from './dto/admin-users.dto';
+import { AdminSetUserVetcoinDto } from './dto/admin-users-vetcoin.dto';
 import {
   AdminCreateForumCategoryDto,
   AdminPatchForumCategoryDto,
@@ -322,6 +323,20 @@ export class AdminController {
     @Req() req: Request,
   ) {
     return this.admin.patchUser(id, dto, actor, {
+      ip: req.ip,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+    });
+  }
+
+  /** Установить абсолютный баланс VetCoin (подтверждение — пароль администратора). */
+  @Post('users/:id/vetcoin-balance')
+  setUserVetcoinBalance(
+    @Param('id') id: string,
+    @Body() dto: AdminSetUserVetcoinDto,
+    @CurrentUser() actor: AuthUser,
+    @Req() req: Request,
+  ) {
+    return this.admin.setUserVetcoinBalance(id, dto, actor, {
       ip: req.ip,
       userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
     });

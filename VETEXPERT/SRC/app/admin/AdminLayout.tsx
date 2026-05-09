@@ -8,7 +8,6 @@ import {
   ShoppingBag,
   Flag,
   Siren,
-  Gauge,
   Globe,
   Bell,
   ArrowLeft,
@@ -19,8 +18,6 @@ import {
   CalendarDays,
   Wrench,
   Share2,
-  Sparkles,
-  Mail,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -99,31 +96,14 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen flex bg-slate-950 text-slate-100">
       <aside className="w-56 shrink-0 bg-emerald-950 border-r border-emerald-900 flex flex-col h-svh lg:h-screen sticky top-0 overflow-hidden">
-        <div className="p-4 border-b border-emerald-900 space-y-3">
-          <div>
-            <p className="text-xs text-emerald-300 uppercase tracking-wide">VetConnect</p>
-            <p className="font-semibold text-white">Админ-панель</p>
-          </div>
-          <Link
-            to="/admin/mail"
-            className="flex items-center justify-center gap-2 w-full rounded-lg bg-amber-500 px-3 py-2.5 text-sm font-bold text-emerald-950 shadow-sm hover:bg-amber-400 border border-amber-300/80"
-          >
-            <Mail className="w-4 h-4 shrink-0" />
-            Почта и SMTP
-          </Link>
+        <div className="p-4 border-b border-emerald-900">
+          <p className="text-xs text-emerald-300 uppercase tracking-wide">VetConnect</p>
+          <p className="font-semibold text-white">Админ-панель</p>
         </div>
         <nav className="p-2 flex-1 space-y-1 overflow-y-auto min-h-0 overscroll-contain">
           <NavLink to="/admin" end className={linkClass}>
             <LayoutDashboard className="w-4 h-4 shrink-0" />
             Обзор
-          </NavLink>
-          <NavLink to="/admin/mail" className={linkClass}>
-            <Mail className="w-4 h-4 shrink-0" />
-            Почта и SMTP
-          </NavLink>
-          <NavLink to="/admin/server-stats" className={linkClass}>
-            <Gauge className="w-4 h-4 shrink-0" />
-            Сервер · метрики
           </NavLink>
           <NavLink to="/admin/users" className={linkClass}>
             <Users className="w-4 h-4 shrink-0" />
@@ -161,14 +141,6 @@ export default function AdminLayout() {
             <Pill className="w-4 h-4 shrink-0" />
             Препараты · дозы
           </NavLink>
-          <NavLink to="/admin/ai-tools" className={linkClass}>
-            <Sparkles className="w-4 h-4 shrink-0" />
-            AI-инструменты
-          </NavLink>
-          <NavLink to="/admin/push" className={linkClass}>
-            <Bell className="w-4 h-4 shrink-0" />
-            Push-токены
-          </NavLink>
           <NavLink to="/admin/vetcoins" className={linkClass}>
             <Coins className="w-4 h-4 shrink-0" />
             VetCoin
@@ -201,8 +173,8 @@ export default function AdminLayout() {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto bg-slate-100 text-slate-900">
-        <div className="max-w-7xl mx-auto p-6">
+      <main className="flex-1 overflow-auto bg-gradient-to-br from-gray-50 via-white to-emerald-50/40 text-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
           <Outlet />
         </div>
       </main>
