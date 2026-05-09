@@ -141,7 +141,7 @@ export default function ForumDiscussionList({
                     <TranslatedContent
                       text={discussion.title}
                       originalLang={discussion.originalLang}
-                      className={`font-semibold text-[13px] sm:text-xs leading-tight line-clamp-2 tracking-tight ${
+                      className={`font-semibold text-[15px] sm:text-sm leading-tight line-clamp-2 tracking-tight ${
                         discussion.isHot && !discussion.isClosed ? "text-red-950" : "text-slate-900"
                       }`}
                     />
@@ -186,7 +186,7 @@ export default function ForumDiscussionList({
               </div>
 
               <div
-                className="col-span-2 col-start-1 row-start-3 sm:col-span-1 sm:col-start-4 text-[10px] text-slate-600 min-w-0 sm:px-2 sm:py-1.5 border-t border-slate-100 sm:border-t-0 pt-1.5 sm:pt-0 group/last leading-snug"
+                className="col-span-2 col-start-1 row-start-3 sm:col-span-1 sm:col-start-4 sm:row-start-1 text-[10px] text-slate-600 min-w-0 sm:px-2 sm:py-1.5 border-t border-slate-100 sm:border-t-0 pt-1.5 sm:pt-0 group/last leading-snug"
                 onClick={(e) => e.stopPropagation()}
               >
                 {discussion.latestComment ? (
