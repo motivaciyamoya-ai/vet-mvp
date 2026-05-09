@@ -326,6 +326,12 @@ async function callOllamaVisionJson(opts: {
   });
   const text = await res.text();
   if (!res.ok) {
+    const low = `${text ?? ''}`.toLowerCase();
+    if (low.includes('requires more system memory') || low.includes('not enough memory') || low.includes('out of memory')) {
+      throw new BadRequestException(
+        'Ollama: модели не хватает оперативной памяти. Решение: выберите более лёгкую vision‑модель (например moondream) или уменьшите max images, либо добавьте RAM/swap на сервер.',
+      );
+    }
     throw new BadRequestException(`AI (ollama) ошибка: HTTP ${res.status} ${text.slice(0, 500)}`);
   }
   let parsed: any;
