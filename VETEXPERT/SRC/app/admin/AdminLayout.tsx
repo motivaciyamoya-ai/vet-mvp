@@ -99,9 +99,18 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen flex bg-slate-950 text-slate-100">
       <aside className="w-56 shrink-0 bg-emerald-950 border-r border-emerald-900 flex flex-col h-svh lg:h-screen sticky top-0 overflow-hidden">
-        <div className="p-4 border-b border-emerald-900">
-          <p className="text-xs text-emerald-300 uppercase tracking-wide">VetConnect</p>
-          <p className="font-semibold text-white">Админ-панель</p>
+        <div className="p-4 border-b border-emerald-900 space-y-3">
+          <div>
+            <p className="text-xs text-emerald-300 uppercase tracking-wide">VetConnect</p>
+            <p className="font-semibold text-white">Админ-панель</p>
+          </div>
+          <Link
+            to="/admin/mail"
+            className="flex items-center justify-center gap-2 w-full rounded-lg bg-amber-500 px-3 py-2.5 text-sm font-bold text-emerald-950 shadow-sm hover:bg-amber-400 border border-amber-300/80"
+          >
+            <Mail className="w-4 h-4 shrink-0" />
+            Почта и SMTP
+          </Link>
         </div>
         <nav className="p-2 flex-1 space-y-1 overflow-y-auto min-h-0 overscroll-contain">
           <NavLink to="/admin" end className={linkClass}>
