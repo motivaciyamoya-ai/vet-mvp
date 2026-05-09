@@ -22,6 +22,7 @@ type ApiForumCategory = {
   name: string;
   slug: string;
   iconEmoji: string;
+  description?: string | null;
   sortOrder?: number;
   _count?: { threads: number };
 };
@@ -237,7 +238,9 @@ export default function Forum() {
                       {c.name}
                     </div>
                     <p className="text-[11px] sm:text-xs text-slate-600 mt-0.5 leading-snug">
-                      Темы и обсуждения раздела «{c.name}». Откройте, чтобы увидеть все темы и создать новую.
+                      {c.description?.trim()
+                        ? c.description.trim()
+                        : `Темы и обсуждения раздела «${c.name}». Откройте, чтобы увидеть все темы и создать новую.`}
                     </p>
                   </div>
                   <div className="col-span-2 col-start-1 row-start-2 text-xs text-slate-700 tabular-nums sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:text-right border-t border-slate-100 sm:border-0 pt-2 sm:pt-0">

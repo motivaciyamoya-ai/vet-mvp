@@ -205,11 +205,23 @@ export class AdminService {
     }
   }
 
-  forumCategories() {
-    return this.prisma.forumCategory.findMany({
+  async forumCategories() {
+    const cats = await this.prisma.forumCategory.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: { _count: { select: { threads: true } } },
     });
+    const postRows = await this.prisma.$queryRaw<Array<{ id: string; postCount: bigint }>>`
+      SELECT c.id, COUNT(p.id)::bigint AS "postCount"
+      FROM "ForumCategory" c
+      LEFT JOIN "ForumThread" t ON t."categoryId" = c.id
+      LEFT JOIN "ForumPost" p ON p."threadId" = t.id
+      GROUP BY c.id
+    `;
+    const postByCat = new Map(postRows.map((r) => [r.id, Number(r.postCount)]));
+    return cats.map((c) => ({
+      ...c,
+      postCount: postByCat.get(c.id) ?? 0,
+    }));
   }
 
   async createForumCategory(dto: AdminCreateForumCategoryDto) {
