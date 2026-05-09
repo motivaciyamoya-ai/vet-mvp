@@ -301,12 +301,20 @@ export default function Profile() {
                 <p className="text-sm text-emerald-800">Управление пользователями, контентом и справочниками.</p>
               </div>
             </div>
-            <Link
-              to="/admin"
-              className="inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 shrink-0"
-            >
-              Открыть админ-панель
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+              <Link
+                to="/admin"
+                className="inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800"
+              >
+                Открыть админ-панель
+              </Link>
+              <Link
+                to="/admin/mail"
+                className="inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-amber-500 text-amber-950 text-sm font-bold hover:bg-amber-400 border border-amber-600/30"
+              >
+                Почта и SMTP
+              </Link>
+            </div>
           </div>
         )}
       </div>
