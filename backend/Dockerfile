@@ -1,7 +1,11 @@
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
 # Нужен openssl для Prisma в контейнере.
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Для bcrypt/node-gyp иногда нужен fallback build (python + toolchain),
+# если prebuilt бинарник не скачался (таймауты GitHub assets).
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 
 # Копируем минимум для postinstall (prisma generate + sync-dosage-vendor)
 COPY package*.json ./

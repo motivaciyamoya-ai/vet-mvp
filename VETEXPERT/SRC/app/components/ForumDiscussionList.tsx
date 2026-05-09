@@ -6,12 +6,16 @@ import { ForumUrgencyBadge, ForumUrgencyDisc } from "./ForumUrgencyVisual";
 import { assetUrl } from "../../lib/api";
 import type { ForumDiscussionRow } from "../../lib/forumFeedMapping";
 
+export type ForumDiscussionListVariant = "comfortable" | "mybb";
+
 export default function ForumDiscussionList({
   discussions,
   emptyHint,
+  variant = "comfortable",
 }: {
   discussions: ForumDiscussionRow[];
   emptyHint?: string;
+  variant?: ForumDiscussionListVariant;
 }) {
   const navigate = useNavigate();
 
@@ -24,6 +28,150 @@ export default function ForumDiscussionList({
     );
   }
 
+  if (variant === "mybb") {
+    return (
+      <div className="divide-y divide-slate-200 text-sm">
+        <div className="hidden sm:grid sm:grid-cols-[40px_minmax(0,1fr)_7.5rem_minmax(0,12.5rem)] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="sr-only">Статус</span>
+          <span>Тема</span>
+          <span className="text-right pr-1">Ответы / просмотры</span>
+          <span>Последнее</span>
+        </div>
+        {discussions.map((discussion) => (
+          <div
+            key={String(discussion.id)}
+            className={`grid grid-cols-[36px_1fr] sm:grid-cols-[40px_minmax(0,1fr)_7.5rem_minmax(0,12.5rem)] gap-x-2 gap-y-1.5 px-3 py-2.5 sm:py-2 sm:items-start transition-colors cursor-pointer ${
+              discussion.isClosed
+                ? "bg-emerald-50/40 hover:bg-emerald-50/70"
+                : discussion.isHot
+                  ? "bg-red-50/35 hover:bg-red-50/60"
+                  : "hover:bg-slate-50/80"
+            }`}
+            onClick={() => navigate(`/forum/topic/${discussion.id}`)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                navigate(`/forum/topic/${discussion.id}`);
+              }
+            }}
+          >
+            <div className="col-start-1 row-start-1 flex justify-center sm:justify-start pt-0.5">
+              {discussion.isClosed ? (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-teal-600 shadow-sm">
+                  <CheckCircle className="w-4 h-4 text-white" />
+                </div>
+              ) : discussion.isHot && discussion.urgency ? (
+                <ForumUrgencyDisc level={discussion.urgency} className="w-8 h-8" />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-emerald-100 border border-emerald-200/80">
+                  <MessageSquare className="w-4 h-4 text-emerald-700" />
+                </div>
+              )}
+            </div>
+
+            <div className="col-start-2 row-start-1 min-w-0 sm:col-start-2 sm:row-start-1">
+              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                {discussion.isClosed && (
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-700 text-white text-[10px] font-bold uppercase">
+                    Решена
+                  </span>
+                )}
+                {discussion.isHot && !discussion.isClosed && discussion.urgency && (
+                  <ForumUrgencyBadge level={discussion.urgency} />
+                )}
+                <span className="text-[11px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{discussion.category}</span>
+              </div>
+              {discussion.isClosed && discussion.solvedBy && (
+                <div className="flex items-center gap-1.5 mb-1 text-xs text-emerald-800">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-500" aria-hidden />
+                  <UserAvatar
+                    avatarUrl={discussion.solvedBy.avatarUrl}
+                    label={discussion.solvedBy.name}
+                    className="w-6 h-6"
+                    ringClassName="ring-1 ring-emerald-200"
+                  />
+                  <span className="truncate font-medium">{discussion.solvedBy.name}</span>
+                </div>
+              )}
+              <TranslatedContent
+                text={discussion.title}
+                originalLang={discussion.originalLang}
+                className={`font-semibold text-[15px] sm:text-[13px] leading-snug line-clamp-2 ${
+                  discussion.isHot && !discussion.isClosed ? "text-red-950" : "text-slate-900"
+                }`}
+              />
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-600">
+                <span className="font-medium text-slate-800">{discussion.author}</span>
+                <span className="text-slate-400">·</span>
+                <span className="inline-flex items-center gap-0.5">
+                  <MapPin className="w-3 h-3 shrink-0" />
+                  {discussion.location}
+                </span>
+              </div>
+              {discussion.coverThumb ? (
+                <div className="mt-2 w-14 h-14 rounded border border-slate-200 overflow-hidden sm:hidden">
+                  <img src={assetUrl(discussion.coverThumb)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                </div>
+              ) : null}
+            </div>
+
+            <div
+              className="col-span-2 col-start-1 row-start-2 text-xs text-slate-600 tabular-nums sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:text-right border-t border-slate-100 sm:border-0 pt-2 sm:pt-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex sm:flex-col sm:items-end gap-x-3 gap-y-0.5">
+                <span>
+                  <span className="text-slate-400 sm:hidden">Ответы: </span>
+                  {discussion.replies}
+                </span>
+                <span>
+                  <span className="text-slate-400 sm:hidden">Просмотры: </span>
+                  {discussion.views}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className="col-span-2 col-start-1 row-start-3 text-xs text-slate-600 min-w-0 sm:col-span-1 sm:col-start-4 sm:row-start-1 border-t border-slate-100 sm:border-0 pt-2 sm:pt-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {discussion.latestComment ? (
+                <>
+                  <p className="text-slate-800 line-clamp-2 leading-snug">{discussion.latestComment.body}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    <span className="font-medium text-slate-700">{discussion.latestComment.authorLabel}</span>
+                    <span className="text-slate-400"> · </span>
+                    <span>{discussion.latestComment.relativeTime}</span>
+                    {discussion.latestComment.authorUserId ? (
+                      <>
+                        <span className="text-slate-400"> · </span>
+                        <Link
+                          className="text-emerald-700 font-medium hover:underline"
+                          to={`/users/${discussion.latestComment.authorUserId}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          профиль
+                        </Link>
+                      </>
+                    ) : null}
+                  </p>
+                </>
+              ) : (
+                <p className="text-slate-500">
+                  <span className="text-slate-400">Обновлено </span>
+                  <span className="font-medium text-slate-700">{discussion.time}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  /* comfortable (прежний карточный вид) */
   return (
     <div className="divide-y divide-gray-200">
       {discussions.map((discussion) => (

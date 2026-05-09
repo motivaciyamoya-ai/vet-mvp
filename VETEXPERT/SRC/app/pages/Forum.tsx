@@ -3,17 +3,19 @@ import {
   Filter as FilterIcon,
   Plus,
   CheckCircle,
+  ChevronRight,
 } from "lucide-react";
 import CreateHotTopic from "../components/CreateHotTopic";
 import GuestPublishGate from "../components/GuestPublishGate";
 import ForumDiscussionList from "../components/ForumDiscussionList";
 import { ForumUrgencyIcon } from "../components/ForumUrgencyVisual";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { apiFetch } from "../../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import type { FeedThreadFromApi, ForumDiscussionRow } from "../../lib/forumFeedMapping";
 import { discussionFromFeedThread } from "../../lib/forumFeedMapping";
+import { approximateReplySumInFeed, lastActivityForCategorySlug } from "../../lib/forumIndexHelpers";
 
 type ApiForumCategory = {
   id: string;
@@ -26,6 +28,7 @@ type ApiForumCategory = {
 
 export default function Forum() {
   const { authReady, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeFilter, setActiveFilter] = useState<"all" | "hot" | "closed">("all");
   const [showCreateHot, setShowCreateHot] = useState(false);
@@ -180,43 +183,104 @@ export default function Forum() {
         </button>
       </div>
 
-      {/* Разделы подгружаются с сервера; админка задаёт порядок и оформление */}
-      <div>
-        <h3 className="font-semibold text-sm lg:text-base text-gray-700 mb-2 lg:mb-2.5">Разделы форума</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-2">
-          {categoryTiles.length === 0 ? (
-            <p className="text-xs sm:text-sm text-gray-600 col-span-full">
-              Разделы подгружаются с сервера. Если список пуст — администратор может добавить их в панели управления.
-            </p>
-          ) : (
-            categoryTiles.map((c) => {
+      {/* Индекс разделов в стиле MyBB: шапка категории + таблица строк */}
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-gradient-to-r from-emerald-700 via-emerald-700 to-teal-700 text-white">
+          <h2 className="text-sm sm:text-base font-semibold tracking-tight">Разделы сообщества</h2>
+          <span className="text-[11px] sm:text-xs text-emerald-100/95 tabular-nums hidden sm:inline">
+            {categoryTiles.length} разделов
+          </span>
+        </div>
+
+        <div className="hidden sm:grid sm:grid-cols-[40px_minmax(0,1fr)_6.5rem_minmax(0,13rem)] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="sr-only">Статус</span>
+          <span>Форум</span>
+          <span className="text-right pr-0.5">Темы / ответы</span>
+          <span>Последнее</span>
+        </div>
+
+        {categoryTiles.length === 0 ? (
+          <p className="text-sm text-slate-600 px-4 py-6">
+            Разделы подгружаются с сервера. Если список пуст — администратор может добавить их в панели управления.
+          </p>
+        ) : (
+          <div className="divide-y divide-slate-200">
+            {categoryTiles.map((c) => {
               const icon = c.iconEmoji?.trim() || "💬";
-              const count = c._count?.threads ?? 0;
+              const threads = c._count?.threads ?? 0;
+              const repliesApprox = approximateReplySumInFeed(c.slug, feedItems);
+              const last = lastActivityForCategorySlug(c.slug, feedItems);
               return (
-                <Link
+                <div
                   key={c.id}
-                  to={`/forum/category/${encodeURIComponent(c.slug)}`}
-                  title={`${c.name} — ${count} тем`}
-                  className="group flex items-start gap-2 rounded-xl border border-slate-200/95 bg-white px-2 py-2 sm:px-2.5 sm:py-2 hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/forum/category/${encodeURIComponent(c.slug)}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/forum/category/${encodeURIComponent(c.slug)}`);
+                    }
+                  }}
+                  className="grid grid-cols-[36px_1fr] sm:grid-cols-[40px_minmax(0,1fr)_6.5rem_minmax(0,13rem)] gap-x-2 gap-y-1.5 px-3 py-2.5 sm:py-2 sm:items-start text-sm hover:bg-emerald-50/40 transition-colors group cursor-pointer"
                 >
-                  <span
-                    className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 text-[1rem] sm:text-lg leading-none border border-emerald-100/90 shadow-none group-hover:from-white group-hover:to-emerald-50/80"
-                    aria-hidden
-                  >
-                    {icon}
-                  </span>
-                  <div className="min-w-0 flex-1 text-left pt-0.5">
-                    <div className="font-semibold text-[11px] sm:text-xs text-gray-900 leading-snug line-clamp-2 group-hover:text-emerald-900">
+                  <div className="col-start-1 row-start-1 flex justify-center sm:justify-start pt-0.5">
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 border border-emerald-200/90 text-base leading-none group-hover:bg-white group-hover:border-emerald-300"
+                      aria-hidden
+                    >
+                      {icon}
+                    </span>
+                  </div>
+                  <div className="col-start-2 row-start-1 min-w-0 sm:col-start-2">
+                    <div className="font-semibold text-slate-900 text-[15px] sm:text-sm group-hover:text-emerald-800 leading-snug">
                       {c.name}
                     </div>
-                    <div className="text-[10px] sm:text-[11px] text-gray-500 tabular-nums mt-0.5">{count} тем</div>
+                    <p className="text-[11px] sm:text-xs text-slate-600 mt-0.5 leading-snug">
+                      Темы и обсуждения раздела «{c.name}». Откройте, чтобы увидеть все темы и создать новую.
+                    </p>
                   </div>
-                </Link>
+                  <div className="col-span-2 col-start-1 row-start-2 text-xs text-slate-700 tabular-nums sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:text-right border-t border-slate-100 sm:border-0 pt-2 sm:pt-0">
+                    <div className="font-medium text-slate-900">{threads}</div>
+                    <div className="text-[11px] text-slate-500">
+                      {repliesApprox > 0 ? (
+                        <>
+                          ответов в ленте: <span className="tabular-nums">{repliesApprox}</span>
+                        </>
+                      ) : (
+                        "ответов: —"
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className="col-span-2 col-start-1 row-start-3 text-xs text-slate-600 min-w-0 sm:col-span-1 sm:col-start-4 sm:row-start-1 border-t border-slate-100 sm:border-0 pt-2 sm:pt-0"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    {last ? (
+                      <Link
+                        to={`/forum/topic/${encodeURIComponent(last.threadId)}`}
+                        className="block rounded-md -mx-1 px-1 py-0.5 hover:bg-white/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <p className="text-slate-800 line-clamp-2 leading-snug">{last.excerpt}</p>
+                        <p className="mt-1 text-[11px] text-slate-500 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                          <span className="font-medium text-slate-700">{last.author}</span>
+                          <span className="text-slate-400">·</span>
+                          <span>{last.time}</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-auto sm:ml-0" aria-hidden />
+                        </p>
+                      </Link>
+                    ) : (
+                      <p className="text-slate-500">Нет тем в текущей ленте — зайдите в раздел.</p>
+                    )}
+                  </div>
+                </div>
               );
-            })
-          )}
-        </div>
-      </div>
+            })}
+          </div>
+        )}
+      </section>
 
       {/* Discussions */}
       <div className="bg-white rounded-lg lg:rounded-xl border border-gray-200 overflow-hidden">
@@ -247,7 +311,7 @@ export default function Forum() {
             </p>
           </div>
         ) : (
-          <ForumDiscussionList discussions={discussions} />
+          <ForumDiscussionList discussions={discussions} variant="mybb" />
         )}
       </div>
 
