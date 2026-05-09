@@ -35,6 +35,7 @@ import AdminDosageDrugs from "./admin/AdminDosageDrugs";
 import AdminEvents from "./admin/AdminEvents";
 import AdminSecurity from "./admin/AdminSecurity";
 import AdminAiTools from "./admin/AdminAiTools";
+import AdminServerStats from "./admin/AdminServerStats";
 import UserPublicProfile from "./pages/UserPublicProfile";
 import MessagesPage from "./pages/MessagesPage";
 import ArticleDetail from "./pages/ArticleDetail";
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
     Component: AdminLayout,
     children: [
       { index: true, Component: AdminDashboard },
+      { path: "server-stats", Component: AdminServerStats },
       { path: "users", Component: AdminUsers },
       {
         path: "forum",

@@ -9,6 +9,7 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 import { LiveTrafficService } from './live-traffic/live-traffic.service';
 import { createLiveTrafficMiddleware } from './live-traffic/live-traffic.express';
+import { startDefaultMetrics } from './metrics/metrics.init';
 
 function parseCorsOrigin(): boolean | string[] {
   const raw = (process.env.CORS_ORIGINS ?? '').trim();
@@ -24,6 +25,7 @@ function parseCorsOrigin(): boolean | string[] {
 }
 
 async function bootstrap() {
+  startDefaultMetrics();
   const uploadsRoot = join(process.cwd(), 'uploads');
   mkdirSync(join(uploadsRoot, 'thread'), { recursive: true });
   mkdirSync(join(uploadsRoot, 'avatars'), { recursive: true });

@@ -1,0 +1,111 @@
+{
+  "uid": "vetconnect-host",
+  "title": "VetConnect: Host + Containers",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "tags": ["vetconnect", "host", "docker"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h"] },
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(up{job=\"node-exporter\"}, instance)",
+        "current": { "text": "node-exporter:9100", "value": "node-exporter:9100" },
+        "refresh": 1
+      },
+      {
+        "name": "container",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": "label_values(container_cpu_usage_seconds_total{job=\"cadvisor\", image!=\"\", container_label_com_docker_compose_service!=\"\"}, container_label_com_docker_compose_service)",
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Host CPU usage (%)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\", job=\"node-exporter\", instance=~\"$instance\"}[2m])) * 100)",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Host Memory used (%)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "(1 - (node_memory_MemAvailable_bytes{job=\"node-exporter\", instance=~\"$instance\"} / node_memory_MemTotal_bytes{job=\"node-exporter\", instance=~\"$instance\"})) * 100",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Host Disk usage (%) (rootfs)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "(1 - (node_filesystem_avail_bytes{job=\"node-exporter\", instance=~\"$instance\", mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\", instance=~\"$instance\", mountpoint=\"/\"})) * 100",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Host Network (bytes/s)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (instance) (rate(node_network_receive_bytes_total{job=\"node-exporter\", instance=~\"$instance\", device!~\"lo\"}[2m]))",
+          "legendFormat": "rx {{instance}}"
+        },
+        {
+          "expr": "sum by (instance) (rate(node_network_transmit_bytes_total{job=\"node-exporter\", instance=~\"$instance\", device!~\"lo\"}[2m]))",
+          "legendFormat": "tx {{instance}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Container CPU usage (cores)",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 9 },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\", image!=\"\", container_label_com_docker_compose_service=~\"$container\"}[2m]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "cores" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Container Memory usage (bytes)",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 9 },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{job=\"cadvisor\", image!=\"\", container_label_com_docker_compose_service=~\"$container\"})",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    }
+  ]
+}
+

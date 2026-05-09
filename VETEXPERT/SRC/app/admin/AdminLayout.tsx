@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   Flag,
   Siren,
+  Gauge,
   Globe,
   Bell,
   ArrowLeft,
@@ -105,6 +106,10 @@ export default function AdminLayout() {
           <NavLink to="/admin" end className={linkClass}>
             <LayoutDashboard className="w-4 h-4 shrink-0" />
             Обзор
+          </NavLink>
+          <NavLink to="/admin/server-stats" className={linkClass}>
+            <Gauge className="w-4 h-4 shrink-0" />
+            Сервер · метрики
           </NavLink>
           <NavLink to="/admin/users" className={linkClass}>
             <Users className="w-4 h-4 shrink-0" />

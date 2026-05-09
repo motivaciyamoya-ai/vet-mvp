@@ -27,6 +27,7 @@ import { HomeChatModule } from './home-chat/home-chat.module';
 import { VetEventsModule } from './vet-events/vet-events.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { AiToolsModule } from './ai-tools/ai-tools.module';
+import { MetricsModule } from './metrics/metrics.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -60,6 +61,7 @@ import { AiToolsModule } from './ai-tools/ai-tools.module';
     VetEventsModule,
     ModerationModule,
     AiToolsModule,
+    MetricsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
