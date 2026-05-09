@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { apiAdminVetEventsSync, apiFetch } from "../../lib/api";
 
 type Row = { id: string; key: string; value: string; updatedAt: string };
@@ -72,6 +73,13 @@ export default function AdminSettings() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
+        <span className="font-semibold">Почта, SMTP и рассылки</span> — отдельный раздел:{" "}
+        <Link to="/admin/mail" className="text-emerald-800 font-semibold underline hover:text-emerald-900">
+          открыть «Почта и SMTP»
+        </Link>
+        .
+      </div>
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Настройки сайта</h1>
         <p className="text-slate-600 text-sm mt-1">

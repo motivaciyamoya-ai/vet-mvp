@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import {
   apiAdminLiveTraffic,
   apiAdminLiveTrafficHistory,
@@ -289,6 +290,11 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold text-slate-900">Аналитика и обзор</h1>
         <p className="text-slate-600 text-sm mt-1">
           Сводка за 14 дней: распределения и последние регистрации.
+        </p>
+        <p className="text-sm mt-2">
+          <Link to="/admin/mail" className="text-emerald-700 font-semibold hover:underline">
+            Почта и SMTP (рассылки, тест)
+          </Link>
         </p>
       </div>
 

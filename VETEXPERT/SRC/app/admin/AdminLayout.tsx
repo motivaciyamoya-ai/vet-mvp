@@ -108,6 +108,10 @@ export default function AdminLayout() {
             <LayoutDashboard className="w-4 h-4 shrink-0" />
             Обзор
           </NavLink>
+          <NavLink to="/admin/mail" className={linkClass}>
+            <Mail className="w-4 h-4 shrink-0" />
+            Почта и SMTP
+          </NavLink>
           <NavLink to="/admin/server-stats" className={linkClass}>
             <Gauge className="w-4 h-4 shrink-0" />
             Сервер · метрики
@@ -151,10 +155,6 @@ export default function AdminLayout() {
           <NavLink to="/admin/ai-tools" className={linkClass}>
             <Sparkles className="w-4 h-4 shrink-0" />
             AI-инструменты
-          </NavLink>
-          <NavLink to="/admin/mail" className={linkClass}>
-            <Mail className="w-4 h-4 shrink-0" />
-            Почта
           </NavLink>
           <NavLink to="/admin/push" className={linkClass}>
             <Bell className="w-4 h-4 shrink-0" />
