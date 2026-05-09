@@ -11,7 +11,9 @@ export class AlertsService {
   constructor(private readonly config: ConfigService) {
     this.to = (this.config.get<string>('ALERT_EMAIL_TO') ?? '').trim();
     const host = (this.config.get<string>('SMTP_HOST') ?? '').trim();
-    if (host && this.to) {
+    // Транспорт нужен и для писем пользователям (подтверждение email), и для алертов админу.
+    // ALERT_EMAIL_TO обязателен только для метода send() — адрес получателя админских писем.
+    if (host) {
       const port = parseInt(this.config.get<string>('SMTP_PORT') ?? '587', 10) || 587;
       const user = (this.config.get<string>('SMTP_USER') ?? '').trim();
       const pass = (this.config.get<string>('SMTP_PASS') ?? '').trim();
@@ -28,6 +30,34 @@ export class AlertsService {
 
   private fromAddress() {
     return (this.config.get<string>('SMTP_FROM') ?? this.config.get<string>('SMTP_USER') ?? 'alerts@localhost').trim();
+  }
+
+  /** Письмо на произвольный адрес (подтверждение email и т. п.). Достаточно задать SMTP_HOST (+ при необходимости SMTP_USER/PASS). */
+  async sendTransactional(to: string, subject: string, text: string, html?: string): Promise<boolean> {
+    const addr = to?.trim();
+    if (!addr) {
+      this.log.warn(`Transactional mail skipped: empty recipient, subject=${subject}`);
+      return false;
+    }
+    if (!this.transporter) {
+      this.log.debug(`Transactional mail skipped (no SMTP_HOST): to=${addr}`);
+      return false;
+    }
+    try {
+      await this.transporter.sendMail({
+        from: this.fromAddress(),
+        to: addr,
+        subject,
+        text,
+        ...(html ? { html } : {}),
+      });
+      return true;
+    } catch (e: unknown) {
+      this.log.error(
+        `SMTP transactional failed (to=${addr}): ${e instanceof Error ? e.message : e}`,
+      );
+      return false;
+    }
   }
 
   async send(subject: string, text: string) {

@@ -268,7 +268,8 @@ export default function Profile() {
               <div>
                 <p className="font-semibold text-amber-950">Подтвердите email</p>
                 <p className="text-sm text-amber-900 mt-0.5">
-                  Перейдите по ссылке из письма. Без SMTP ссылку смотрите в логе сервера после регистрации.
+                  Перейдите по ссылке из письма (проверьте «Спам»). Если на сервере не настроен SMTP, ссылка после
+                  регистрации дублируется только в логе backend — запросите «Отправить ссылку снова» и посмотрите лог.
                 </p>
                 {verifyMsg && <p className="text-xs text-amber-800 mt-2">{verifyMsg}</p>}
               </div>

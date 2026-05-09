@@ -120,6 +120,30 @@ export class AuthService {
     this.log.warn(`Подтвердите email (${emailNorm}): ${url}`);
   }
 
+  /** Письмо на адрес пользователя; при отсутствии/ошибке SMTP — ссылка только в логе (как раньше). */
+  private async deliverEmailVerification(emailNorm: string, token: string) {
+    const url = `${this.frontendBaseUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+    const subject = 'VetConnect — подтверждение email';
+    const text =
+      `Здравствуйте!\n\n` +
+      `Чтобы подтвердить адрес и получить значок «Почта подтверждена» в профиле, откройте ссылку в течение 72 часов:\n\n` +
+      `${url}\n\n` +
+      `Если вы не регистрировались на VetConnect, просто удалите это письмо.\n`;
+    const html =
+      `<p>Здравствуйте!</p>` +
+      `<p>Чтобы подтвердить адрес и получить значок «Почта подтверждена» в профиле, нажмите кнопку ниже (ссылка действует 72 часа).</p>` +
+      `<p><a href="${url}" style="display:inline-block;padding:10px 16px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Подтвердить email</a></p>` +
+      `<p style="font-size:13px;color:#444;">Или скопируйте адрес в браузер:<br/><span style="word-break:break-all;">${url}</span></p>` +
+      `<p style="font-size:12px;color:#666;">Если вы не регистрировались на VetConnect, удалите это письмо.</p>`;
+
+    const sent = await this.alerts.sendTransactional(emailNorm, subject, text, html);
+    if (sent) {
+      this.log.log(`Письмо с подтверждением отправлено на ${emailNorm}`);
+    } else {
+      this.printVerificationHint(emailNorm, token);
+    }
+  }
+
   private recordFailedLogin(ip?: string) {
     if (!ip) return;
     const now = Date.now();
@@ -206,7 +230,7 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 72 * 3600000),
       },
     });
-    this.printVerificationHint(emailNorm, verifyToken);
+    await this.deliverEmailVerification(emailNorm, verifyToken);
 
     try {
       const bonus = await this.vetcoin.settingInt('vetcoin.registration_bonus', 50);
@@ -366,7 +390,7 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 72 * 3600000),
       },
     });
-    this.printVerificationHint(user.email, vt);
+    await this.deliverEmailVerification(user.email, vt);
     return { ok: true };
   }
 }

@@ -19,7 +19,8 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://vet:vet@postgres:5432/vetmvp
       TRUST_PROXY: "1"
-      # Если вы используете JWT/SMTP/Push — заполните эти значения в .env (см backend/.env.example)
+      # JWT и прочее из .env (см. backend/.env.example). Почта пользователям: SMTP_HOST + SMTP_FROM + FRONTEND_URL;
+      # служебные алерты админу — ещё ALERT_EMAIL_TO.
       AI_PROVIDER: ollama
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_VISION_MODEL: llava:7b
