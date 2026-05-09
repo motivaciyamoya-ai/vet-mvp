@@ -190,7 +190,6 @@ export class UsersService {
         city: dto.city ?? undefined,
         countryId: dto.countryId ?? undefined,
         jobTitleId: dto.jobTitleId ?? undefined,
-        accountCategory: dto.accountCategory ? (dto.accountCategory as any) : undefined,
         avatarUrl: avatarNext !== undefined ? avatarNext : undefined,
         ...(birthDate ? { birthDate } : {}),
       },

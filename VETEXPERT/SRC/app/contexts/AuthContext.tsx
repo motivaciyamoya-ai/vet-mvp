@@ -40,7 +40,6 @@ export interface User {
   /** Для редактирования профиля (справочники стран и должностей). */
   countryId?: string;
   jobTitleId?: string;
-  accountCategory?: "SPECIALIST" | "BUSINESS_OWNER" | "ADMINISTRATOR";
   avatar?: string | null;
   /** ГГГГ-ММ-ДД с сервера (если задан в профиле). */
   birthDate?: string | null;
@@ -79,7 +78,6 @@ interface MeResponse {
     displayName: string;
     city: string;
     avatarUrl?: string | null;
-    accountCategory?: "SPECIALIST" | "BUSINESS_OWNER" | "ADMINISTRATOR";
     birthDate?: string | Date | null;
     country: { nameRu: string };
     jobTitle: { nameRu: string };
@@ -98,7 +96,6 @@ function mapMe(me: MeResponse): User {
     stats: me.stats,
     countryId: me.profile.countryId,
     jobTitleId: me.profile.jobTitleId,
-    accountCategory: me.profile.accountCategory,
     avatar: me.profile.avatarUrl,
     birthDate:
       me.profile.birthDate == null
@@ -145,7 +142,6 @@ export interface RegisterPayload {
   city: string;
   countryId: string;
   jobTitleId: string;
-  accountCategory: "SPECIALIST" | "BUSINESS_OWNER" | "ADMINISTRATOR";
   birthDate: string;
   policyAccepted: boolean;
 }
@@ -237,7 +233,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           city: payload.city,
           countryId: payload.countryId,
           jobTitleId: payload.jobTitleId,
-          accountCategory: payload.accountCategory,
           birthDate: payload.birthDate.trim(),
           policyAccepted: payload.policyAccepted,
         },

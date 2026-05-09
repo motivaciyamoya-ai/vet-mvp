@@ -3,13 +3,25 @@ import {
   ForbiddenException,
   Injectable,
   NotImplementedException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { VetcoinService } from '../vetcoin/vetcoin.service';
 import { ResolvedAiRuntime, resolveAiRuntime } from './ai-tools-config';
 
-type AccountCategory = 'SPECIALIST' | 'BUSINESS_OWNER' | 'ADMINISTRATOR';
+const log = new Logger('AiTools');
+
+function userFacingAiUnavailableMessage(): string {
+  return 'AI временно недоступен. Попробуйте ещё раз через минуту.';
+}
+
+function isAbortLike(e: unknown): boolean {
+  return (
+    e instanceof Error &&
+    (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted') || String(e.message).toLowerCase().includes('timeout'))
+  );
+}
 
 type MulterMemFile = {
   originalname: string;
@@ -114,12 +126,13 @@ export class AiToolsService {
 
     const profile = await this.prisma.profile.findUnique({
       where: { userId: input.userId },
-      select: { accountCategory: true, displayName: true },
+      select: { displayName: true, jobTitle: { select: { nameRu: true } } },
     });
-    const cat = (profile?.accountCategory ?? 'SPECIALIST') as AccountCategory;
-    if (cat !== 'ADMINISTRATOR' && cat !== 'BUSINESS_OWNER') {
+    const title = (profile?.jobTitle?.nameRu ?? '').trim().toLowerCase();
+    const allowed = title === 'администратор' || title === 'владелец бизнеса' || title.includes('руковод');
+    if (!allowed) {
       throw new ForbiddenException(
-        'Этот ассистент доступен только для категорий «Администратор» и «Владелец бизнеса». Выберите категорию в профиле/регистрации.',
+        'Этот ассистент доступен для специализаций «Администратор» и «Владелец бизнеса / руководитель». Выберите специализацию в профиле.',
       );
     }
 
@@ -128,7 +141,7 @@ export class AiToolsService {
       throw new NotImplementedException('Провайдер AI должен быть openai или ollama');
     }
 
-    const system = buildRoleAssistantSystemPrompt({ category: cat, displayName: profile?.displayName ?? null });
+    const system = buildRoleAssistantSystemPrompt({ kind: title, displayName: profile?.displayName ?? null });
     const userPrompt = msg;
 
     const parsed =
@@ -381,9 +394,10 @@ export class AiToolsService {
   }
 }
 
-function buildRoleAssistantSystemPrompt(input: { category: AccountCategory; displayName: string | null }): string {
+function buildRoleAssistantSystemPrompt(input: { kind: string; displayName: string | null }): string {
   const name = input.displayName ? `Пользователь: ${input.displayName}.\n` : '';
-  if (input.category === 'ADMINISTRATOR') {
+  const isAdmin = input.kind === 'администратор' || input.kind.includes('админ');
+  if (isAdmin) {
     return (
       `${name}` +
       `Ты — AI помощник Администратора VetConnect/ветклиники. ` +
@@ -525,33 +539,34 @@ async function callOpenAiVisionJson(opts: {
       signal: ctrl.signal,
     });
   } catch (e: unknown) {
-    const msg =
-      e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
-        ? 'OpenAI не ответил за ~55 секунд. Попробуйте позже или уменьшите количество изображений.'
-        : `Не удалось связаться с OpenAI: ${e instanceof Error ? e.message : String(e)}`;
-    throw new BadRequestException(msg);
+    log.warn(`OpenAI vision fetch failed. abort=${isAbortLike(e)} err=${e instanceof Error ? e.message : String(e)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   } finally {
     clearTimeout(t);
   }
   const text = await res.text();
   if (!res.ok) {
-    throw new BadRequestException(`AI ошибка: HTTP ${res.status} ${text.slice(0, 500)}`);
+    log.warn(`OpenAI vision http error: ${res.status} body=${text.slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
 
   let parsed: any;
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new BadRequestException('AI вернул не-JSON ответ.');
+    log.warn(`OpenAI vision non-json response: ${text.slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
   const contentText = parsed?.choices?.[0]?.message?.content;
   if (typeof contentText !== 'string' || !contentText.trim()) {
-    throw new BadRequestException('AI не вернул результат.');
+    log.warn('OpenAI vision empty content');
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
   try {
     return JSON.parse(contentText);
   } catch {
-    throw new BadRequestException('AI вернул невалидный JSON результата.');
+    log.warn(`OpenAI vision invalid json content: ${String(contentText).slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
 }
 
@@ -594,11 +609,8 @@ async function callOllamaVisionJson(opts: {
       signal: ctrl.signal,
     });
   } catch (e: unknown) {
-    const msg =
-      e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
-        ? 'Ollama не ответила за ~55 секунд. Решение: выберите более лёгкую модель, уменьшите max images или добавьте RAM/swap.'
-        : `Не удалось связаться с Ollama (${base}): ${e instanceof Error ? e.message : String(e)}`;
-    throw new BadRequestException(msg);
+    log.warn(`Ollama vision fetch failed. abort=${isAbortLike(e)} base=${base} err=${e instanceof Error ? e.message : String(e)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   } finally {
     clearTimeout(t);
   }
@@ -606,26 +618,29 @@ async function callOllamaVisionJson(opts: {
   if (!res.ok) {
     const low = `${text ?? ''}`.toLowerCase();
     if (low.includes('requires more system memory') || low.includes('not enough memory') || low.includes('out of memory')) {
-      throw new BadRequestException(
-        'Ollama: модели не хватает оперативной памяти. Решение: выберите более лёгкую vision‑модель (например moondream) или уменьшите max images, либо добавьте RAM/swap на сервер.',
-      );
+      log.error(`Ollama vision OOM. base=${base} model=${opts.model} body=${text.slice(0, 500)}`);
+      throw new BadRequestException(userFacingAiUnavailableMessage());
     }
-    throw new BadRequestException(`AI (ollama) ошибка: HTTP ${res.status} ${text.slice(0, 500)}`);
+    log.warn(`Ollama vision http error: ${res.status} body=${text.slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
   let parsed: any;
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new BadRequestException('AI (ollama) вернул не-JSON ответ.');
+    log.warn(`Ollama vision non-json response: ${text.slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
   const contentText = parsed?.message?.content;
   if (typeof contentText !== 'string' || !contentText.trim()) {
-    throw new BadRequestException('AI (ollama) не вернул результат.');
+    log.warn('Ollama vision empty content');
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
   try {
     return JSON.parse(contentText);
   } catch {
-    throw new BadRequestException('AI (ollama) вернул невалидный JSON результата.');
+    log.warn(`Ollama vision invalid json content: ${String(contentText).slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
 }
 
@@ -668,23 +683,22 @@ async function callOpenAiChatText(opts: {
       signal: ctrl.signal,
     });
   } catch (e: unknown) {
-    const msg =
-      e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
-        ? 'OpenAI не ответил за ~55 секунд. Попробуйте позже.'
-        : `Не удалось связаться с OpenAI: ${e instanceof Error ? e.message : String(e)}`;
-    throw new BadRequestException(msg);
+    log.warn(`OpenAI chat fetch failed. abort=${isAbortLike(e)} err=${e instanceof Error ? e.message : String(e)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   } finally {
     clearTimeout(t);
   }
   const text = await res.text();
   if (!res.ok) {
-    throw new BadRequestException(`AI ошибка: HTTP ${res.status} ${text.slice(0, 500)}`);
+    log.warn(`OpenAI chat http error: ${res.status} body=${text.slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
   let parsed: any;
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new BadRequestException('AI вернул не-JSON ответ.');
+    log.warn(`OpenAI chat non-json response: ${text.slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
   const contentText = parsed?.choices?.[0]?.message?.content;
   return typeof contentText === 'string' ? contentText.trim() : '';
@@ -719,11 +733,8 @@ async function callOllamaChatText(opts: {
       signal: ctrl.signal,
     });
   } catch (e: unknown) {
-    const msg =
-      e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
-        ? 'Ollama не ответила за ~55 секунд. Решение: выберите более лёгкую модель или добавьте RAM/swap.'
-        : `Не удалось связаться с Ollama (${base}): ${e instanceof Error ? e.message : String(e)}`;
-    throw new BadRequestException(msg);
+    log.warn(`Ollama chat fetch failed. abort=${isAbortLike(e)} base=${base} err=${e instanceof Error ? e.message : String(e)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   } finally {
     clearTimeout(t);
   }
@@ -731,11 +742,11 @@ async function callOllamaChatText(opts: {
   if (!res.ok) {
     const low = `${text ?? ''}`.toLowerCase();
     if (low.includes('requires more system memory') || low.includes('not enough memory') || low.includes('out of memory')) {
-      throw new BadRequestException(
-        'Ollama: модели не хватает оперативной памяти. Решение: выберите более лёгкую модель или добавьте RAM/swap.',
-      );
+      log.error(`Ollama chat OOM. base=${base} model=${opts.model} body=${text.slice(0, 500)}`);
+      throw new BadRequestException(userFacingAiUnavailableMessage());
     }
-    throw new BadRequestException(`AI (ollama) ошибка: HTTP ${res.status} ${text.slice(0, 500)}`);
+    log.warn(`Ollama chat http error: ${res.status} body=${text.slice(0, 500)}`);
+    throw new BadRequestException(userFacingAiUnavailableMessage());
   }
   let parsed: any;
   try {

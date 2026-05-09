@@ -191,7 +191,6 @@ export class AuthService {
             city: dto.city,
             countryId: dto.countryId,
             jobTitleId: dto.jobTitleId,
-            accountCategory: dto.accountCategory as any,
             birthDate,
           },
         },

@@ -67,9 +67,6 @@ export default function Profile() {
   const [editCity, setEditCity] = useState("");
   const [editCountryId, setEditCountryId] = useState("");
   const [editJobTitleId, setEditJobTitleId] = useState("");
-  const [editAccountCategory, setEditAccountCategory] = useState<"SPECIALIST" | "BUSINESS_OWNER" | "ADMINISTRATOR">(
-    "SPECIALIST",
-  );
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaveOk, setProfileSaveOk] = useState(false);
   const [profileFormErr, setProfileFormErr] = useState("");
@@ -113,10 +110,9 @@ export default function Profile() {
     setEditCity(user.city ?? "");
     setEditCountryId(user.countryId ?? "");
     setEditJobTitleId(user.jobTitleId ?? "");
-    setEditAccountCategory(user.accountCategory ?? "SPECIALIST");
     setProfileSaveOk(false);
     setProfileFormErr("");
-  }, [user?.id, user?.name, user?.city, user?.countryId, user?.jobTitleId, user?.accountCategory]);
+  }, [user?.id, user?.name, user?.city, user?.countryId, user?.jobTitleId]);
 
   const cancelAvatarCrop = () => {
     if (avatarEditUrl) URL.revokeObjectURL(avatarEditUrl);
@@ -173,7 +169,6 @@ export default function Profile() {
           city: editCity.trim(),
           countryId: editCountryId,
           jobTitleId: editJobTitleId,
-          accountCategory: editAccountCategory,
         },
       });
       await refreshProfile();
@@ -602,25 +597,6 @@ export default function Profile() {
                         </option>
                       ))}
                     </select>
-                  </label>
-
-                  <label className="block text-sm">
-                    <span className="font-medium text-gray-800">Категория аккаунта</span>
-                    <select
-                      value={editAccountCategory}
-                      onChange={(ev) =>
-                        setEditAccountCategory(ev.target.value as "SPECIALIST" | "BUSINESS_OWNER" | "ADMINISTRATOR")
-                      }
-                      disabled={profileSaving}
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white disabled:bg-gray-50"
-                    >
-                      <option value="SPECIALIST">Специалист</option>
-                      <option value="BUSINESS_OWNER">Владелец бизнеса / руководитель</option>
-                      <option value="ADMINISTRATOR">Администратор</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Не даёт доступ к админке. Нужна для персонализации и бесплатного AI‑помощника.
-                    </p>
                   </label>
 
                   <div className="flex flex-wrap items-center gap-3 pt-1">

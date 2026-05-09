@@ -59,7 +59,6 @@ export default function Register() {
     countryId: "",
     city: "",
     birthDate: "",
-    accountCategory: "SPECIALIST" as "SPECIALIST" | "BUSINESS_OWNER" | "ADMINISTRATOR",
 
     // Step 2: Образование
     education: "",
@@ -103,7 +102,6 @@ export default function Register() {
         city: formData.city,
         countryId: formData.countryId,
         jobTitleId: formData.jobTitleId,
-        accountCategory: formData.accountCategory,
         birthDate: formData.birthDate,
         policyAccepted: formData.policyAccepted,
       });
@@ -132,8 +130,7 @@ export default function Register() {
           formData.password === formData.confirmPassword &&
           formData.countryId &&
           formData.city &&
-          formData.birthDate.trim().length >= 10 &&
-          formData.accountCategory
+          formData.birthDate.trim().length >= 10
         );
       case 2:
         return formData.education && formData.degree && formData.graduationYear;
@@ -342,25 +339,6 @@ export default function Register() {
                       />
                     </div>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Категория аккаунта <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    value={formData.accountCategory}
-                    onChange={(e) => updateField("accountCategory", e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  >
-                    <option value="SPECIALIST">Специалист (врач/ассистент/студент)</option>
-                    <option value="BUSINESS_OWNER">Владелец бизнеса / руководитель клиники</option>
-                    <option value="ADMINISTRATOR">Администратор (управление, регламенты)</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Это не “роль ADMIN” и не даёт доступ к админке. Категория нужна для персонализации подсказок и AI‑помощника.
-                  </p>
                 </div>
 
                 <div>

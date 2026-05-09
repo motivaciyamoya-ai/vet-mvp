@@ -66,7 +66,16 @@ export class ReferenceService {
   }
 
   jobTitles() {
-    return this.prisma.jobTitle.findMany({ orderBy: { nameRu: 'asc' } });
+    // Гарантируем, что управленческие специализации доступны без ручного seed на проде.
+    // Это НЕ даёт прав ADMIN — это только справочник должностей/специализаций.
+    return this.prisma.$transaction(async (tx) => {
+      const mustHave = ['Администратор', 'Владелец бизнеса'] as const;
+      for (const nameRu of mustHave) {
+        const exists = await tx.jobTitle.findFirst({ where: { nameRu } });
+        if (!exists) await tx.jobTitle.create({ data: { nameRu } });
+      }
+      return tx.jobTitle.findMany({ orderBy: { nameRu: 'asc' } });
+    });
   }
 
   /** Сводные цифры для главной: без выдуманных консультаций — только то, что есть в БД. */
