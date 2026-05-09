@@ -90,15 +90,6 @@ export class AdminController {
     return this.dashboard.analytics();
   }
 
-  /**
-   * Auth hook for monitoring reverse-proxy (/grafana, /prometheus).
-   * If the request passed admin auth + TOTP, return 204 so nginx allows access.
-   */
-  @Get('monitoring/auth')
-  monitoringAuth() {
-    return { ok: true };
-  }
-
   /** Снимок посещений в памяти процесса: IP, метод/путь, бот или человек (по User-Agent). */
   @Get('analytics/live-traffic')
   liveTrafficSnapshot(@Query('windowSec') windowSec?: string) {

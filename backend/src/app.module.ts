@@ -28,6 +28,7 @@ import { VetEventsModule } from './vet-events/vet-events.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { AiToolsModule } from './ai-tools/ai-tools.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -62,6 +63,7 @@ import { MetricsModule } from './metrics/metrics.module';
     ModerationModule,
     AiToolsModule,
     MetricsModule,
+    MonitoringModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

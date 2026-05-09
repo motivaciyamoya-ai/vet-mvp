@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Gauge, RefreshCw } from "lucide-react";
+import { apiFetch } from "../../lib/api";
 
 type Dash = { id: string; label: string; url: string };
 
@@ -18,6 +19,21 @@ export default function AdminServerStats() {
   const dash = dashes.find((d) => d.id === dashId) ?? dashes[0]!;
 
   const [reloadKey, setReloadKey] = useState(0);
+  const [authErr, setAuthErr] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await apiFetch("/api/admin/monitoring/session", { method: "POST" });
+      } catch (e: unknown) {
+        if (!cancelled) setAuthErr(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -92,6 +108,11 @@ export default function AdminServerStats() {
       </div>
 
       <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+        {authErr ? (
+          <div className="p-4 border-b border-red-200 bg-red-50 text-sm text-red-800">
+            Не удалось авторизовать доступ к мониторингу. {authErr}
+          </div>
+        ) : null}
         <iframe
           key={`${dash.id}:${reloadKey}`}
           title="Grafana"
