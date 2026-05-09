@@ -70,9 +70,12 @@ services:
   grafana:
     image: grafana/grafana:latest
     environment:
-      # Serve behind subpath /grafana
-      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      # Serve behind subpath /grafana (must be a public URL; otherwise Grafana may redirect to localhost)
+      # Set on server in .env if domain differs.
+      GF_SERVER_DOMAIN: ${GRAFANA_DOMAIN:-vetconnect.online}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-https://vetconnect.online/grafana/}
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SERVER_ENFORCE_DOMAIN: "false"
       # Rely on nginx basic-auth; allow anonymous viewer for iframe embed.
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
