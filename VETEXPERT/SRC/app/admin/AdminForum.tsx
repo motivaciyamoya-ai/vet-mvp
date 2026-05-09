@@ -145,10 +145,9 @@ function Modal({
   );
 }
 
-type AdminTab = "structure" | "threads";
+export type AdminForumActiveView = "structure" | "threads";
 
-export default function AdminForum() {
-  const [tab, setTab] = useState<AdminTab>("structure");
+export default function AdminForum({ activeView }: { activeView: AdminForumActiveView }) {
   const [cats, setCats] = useState<Cat[]>([]);
   const [threads, setThreads] = useState<{ items: Thread[]; total: number } | null>(null);
   const [q, setQ] = useState("");
@@ -370,37 +369,28 @@ export default function AdminForum() {
     }
   };
 
-  const tabBtn = (id: AdminTab, label: string) => (
-    <button
-      type="button"
-      key={id}
-      onClick={() => setTab(id)}
-      className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-        tab === id ? "border-emerald-600 text-emerald-800 bg-white" : "border-transparent text-slate-600 hover:text-slate-900"
-      }`}
-    >
-      {label}
-    </button>
-  );
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Управление форумом</h1>
-        <p className="text-slate-600 text-sm mt-1">
-          Структура разделов, порядок отображения, описания и иконки — как в панели классического форума. Темы и посты:
-          правка текста, перенос в другой раздел, смена автора (ID пользователя).
-        </p>
-      </div>
+      {activeView === "structure" ? (
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Управление форумами</h2>
+          <p className="text-slate-600 text-sm mt-1">
+            Разделы (<code className="text-xs bg-slate-100 px-1 rounded">ForumCategory</code>): порядок, slug, описание для
+            главной «Форум», иконка.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Темы и посты</h2>
+          <p className="text-slate-600 text-sm mt-1">
+            Поиск тем, редактор заголовка и тегов, перенос в другой раздел, правка тел постов и смена авторов по ID.
+          </p>
+        </div>
+      )}
 
       {err ? <p className="text-red-600 text-sm">{err}</p> : null}
 
-      <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50/80 rounded-t-lg px-1 pt-1">
-        {tabBtn("structure", "Форумы и категории")}
-        {tabBtn("threads", "Темы и сообщения")}
-      </div>
-
-      {tab === "structure" && (
+      {activeView === "structure" && (
         <div className="space-y-4 -mt-2">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <Link to="/forum" className="text-emerald-700 font-medium underline-offset-2 hover:underline">
@@ -587,7 +577,7 @@ export default function AdminForum() {
         </div>
       )}
 
-      {tab === "threads" && (
+      {activeView === "threads" && (
         <div className="space-y-4 -mt-2">
           <div className="flex flex-wrap gap-2 items-center justify-between">
             <div className="flex gap-2 flex-1 min-w-[240px] max-w-xl">

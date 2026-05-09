@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import Root from "./layout/Root";
 import Home from "./pages/Home";
 import Forum from "./pages/Forum";
@@ -17,6 +17,10 @@ import AdminLayout from "./admin/AdminLayout";
 import AdminDashboard from "./admin/AdminDashboard";
 import AdminUsers from "./admin/AdminUsers";
 import AdminForum from "./admin/AdminForum";
+import AdminForumLayout from "./admin/forum/AdminForumLayout";
+import AdminForumModeration from "./admin/forum/AdminForumModeration";
+import AdminForumAnnouncements from "./admin/forum/AdminForumAnnouncements";
+import AdminForumAttachments from "./admin/forum/AdminForumAttachments";
 import AdminArticles from "./admin/AdminArticles";
 import AdminMarketplace from "./admin/AdminMarketplace";
 import AdminReports from "./admin/AdminReports";
@@ -58,7 +62,18 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: AdminDashboard },
       { path: "users", Component: AdminUsers },
-      { path: "forum", Component: AdminForum },
+      {
+        path: "forum",
+        Component: AdminForumLayout,
+        children: [
+          { index: true, element: <Navigate to="management" replace /> },
+          { path: "management", element: <AdminForum activeView="structure" /> },
+          { path: "threads", element: <AdminForum activeView="threads" /> },
+          { path: "announcements", Component: AdminForumAnnouncements },
+          { path: "moderation", Component: AdminForumModeration },
+          { path: "attachments", Component: AdminForumAttachments },
+        ],
+      },
       { path: "articles", Component: AdminArticles },
       { path: "events", Component: AdminEvents },
       { path: "marketplace", Component: AdminMarketplace },
