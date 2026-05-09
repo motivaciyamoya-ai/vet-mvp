@@ -76,13 +76,19 @@ export default function ForumCategoryPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg lg:rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl lg:rounded-2xl border border-slate-200 overflow-hidden shadow-sm ring-1 ring-emerald-900/5">
+        {!loading && !err ? (
+          <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-gradient-to-r from-emerald-700 via-emerald-700 to-teal-700 text-white border-b border-white/10">
+            <span className="text-sm font-semibold">Темы раздела</span>
+            <span className="text-[11px] text-emerald-100/95 tabular-nums">{discussions.length} тем</span>
+          </div>
+        ) : null}
         {loading ? (
           <div className="text-center py-12 text-gray-600">Загрузка тем…</div>
         ) : err ? (
           <div className="text-center py-12 px-4 text-red-700 text-sm">{err}</div>
         ) : (
-          <ForumDiscussionList discussions={discussions} variant="compact" />
+          <ForumDiscussionList discussions={discussions} variant="compact" tone="emerald" />
         )}
       </div>
     </div>

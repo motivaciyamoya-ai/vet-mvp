@@ -40,6 +40,13 @@ export default function Forum() {
   const [feedLoading, setFeedLoading] = useState(true);
 
   useEffect(() => {
+    const f = searchParams.get("filter");
+    if (f === "hot" || f === "closed" || f === "all") {
+      setActiveFilter(f);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     apiFetch<ApiForumCategory[]>("/api/forum/categories")
       .then((rows) => setApiCategories(Array.isArray(rows) ? rows : []))
       .catch(() => setApiCategories([]));
@@ -144,7 +151,12 @@ export default function Forum() {
       {/* Filter Tabs */}
       <div className="flex gap-2 sm:gap-3 border-b border-gray-200 overflow-x-auto">
         <button
-          onClick={() => setActiveFilter("all")}
+          onClick={() => {
+            setActiveFilter("all");
+            const next = new URLSearchParams(searchParams);
+            next.delete("filter");
+            setSearchParams(next, { replace: true });
+          }}
           className={`flex items-center gap-2 px-3 sm:px-4 py-3 font-medium text-sm lg:text-base border-b-2 transition-colors whitespace-nowrap ${
             activeFilter === "all"
               ? "border-emerald-600 text-emerald-700"
@@ -155,7 +167,12 @@ export default function Forum() {
           Все темы
         </button>
         <button
-          onClick={() => setActiveFilter("hot")}
+          onClick={() => {
+            setActiveFilter("hot");
+            const next = new URLSearchParams(searchParams);
+            next.set("filter", "hot");
+            setSearchParams(next, { replace: true });
+          }}
           className={`flex items-center gap-2 px-3 sm:px-4 py-3 font-medium text-sm lg:text-base border-b-2 transition-colors whitespace-nowrap ${
             activeFilter === "hot"
               ? "border-red-600 text-red-700"
@@ -169,7 +186,12 @@ export default function Forum() {
           </span>
         </button>
         <button
-          onClick={() => setActiveFilter("closed")}
+          onClick={() => {
+            setActiveFilter("closed");
+            const next = new URLSearchParams(searchParams);
+            next.set("filter", "closed");
+            setSearchParams(next, { replace: true });
+          }}
           className={`flex items-center gap-2 px-3 sm:px-4 py-3 font-medium text-sm lg:text-base border-b-2 transition-colors whitespace-nowrap ${
             activeFilter === "closed"
               ? "border-green-600 text-green-700"
@@ -193,11 +215,14 @@ export default function Forum() {
           </span>
         </div>
 
-        <div className="hidden sm:grid sm:grid-cols-[40px_minmax(0,1fr)_6.5rem_minmax(0,13rem)] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          <span className="sr-only">Статус</span>
-          <span>Форум</span>
-          <span className="text-right pr-0.5">Темы / ответы</span>
-          <span>Последнее</span>
+        <div className="hidden sm:grid sm:grid-cols-[40px_minmax(0,1fr)_6.5rem_minmax(0,13rem)] gap-0 bg-gradient-to-r from-emerald-700 via-emerald-700 to-teal-700 text-white text-[11px] font-semibold uppercase tracking-wide shadow-inner">
+          <div className="px-3 py-2.5 border-r border-white/15 flex items-center justify-center">
+            <span className="sr-only">Статус</span>
+            <span className="text-white/85">Ст.</span>
+          </div>
+          <div className="px-3 py-2.5 border-r border-white/15 flex items-center">Раздел</div>
+          <div className="px-3 py-2.5 border-r border-white/15 text-right flex items-center justify-end">Темы</div>
+          <div className="px-3 py-2.5 flex items-center">Последнее</div>
         </div>
 
         {categoryTiles.length === 0 ? (
@@ -286,7 +311,7 @@ export default function Forum() {
       </section>
 
       {/* Discussions */}
-      <div className="bg-white rounded-lg lg:rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg lg:rounded-xl border border-slate-200 overflow-hidden shadow-sm ring-1 ring-slate-900/5">
         {activeFilter === "all" && feedLoading ? (
           <div className="text-center py-12 text-gray-600">Загрузка тем…</div>
         ) : discussions.length === 0 ? (
@@ -314,7 +339,11 @@ export default function Forum() {
             </p>
           </div>
         ) : (
-          <ForumDiscussionList discussions={discussions} variant="compact" />
+          <ForumDiscussionList
+            discussions={discussions}
+            variant="compact"
+            tone={activeFilter === "hot" ? "hot" : "emerald"}
+          />
         )}
       </div>
 
