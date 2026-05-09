@@ -16,6 +16,15 @@ type MailSettings = {
   smtpPasswordStoredInDatabase: boolean;
   effectiveSmtpConfigured: boolean;
   placeholdersHint: string;
+  lastSmtpError: string | null;
+  diagnostics: {
+    hostFromDatabase: boolean;
+    smtpHostEffective: string;
+    secure: boolean;
+    smtpUserSet: boolean;
+    smtpPassSet: boolean;
+    fromSet: boolean;
+  };
 };
 
 type BroadcastResult =
@@ -53,6 +62,8 @@ export default function AdminMail() {
     effectiveSmtpConfigured: false,
     placeholdersHint: "",
     smtpPasswordStoredInDatabase: false,
+    lastSmtpError: null as string | null,
+    diagnostics: null as MailSettings["diagnostics"] | null,
   });
 
   const apply = useCallback((s: MailSettings) => {
@@ -72,6 +83,8 @@ export default function AdminMail() {
       effectiveSmtpConfigured: s.effectiveSmtpConfigured,
       placeholdersHint: s.placeholdersHint,
       smtpPasswordStoredInDatabase: s.smtpPasswordStoredInDatabase,
+      lastSmtpError: s.lastSmtpError,
+      diagnostics: s.diagnostics,
     });
   }, []);
 
@@ -193,6 +206,28 @@ export default function AdminMail() {
       ) : null}
       {ok ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 px-4 py-3 text-sm">{ok}</div>
+      ) : null}
+
+      {meta.lastSmtpError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 text-red-900 px-4 py-3 text-sm space-y-1">
+          <p className="font-semibold">Последняя ошибка SMTP</p>
+          <p className="font-mono text-xs break-words">{meta.lastSmtpError}</p>
+        </div>
+      ) : null}
+
+      {meta.diagnostics ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700 space-y-1">
+          <p className="font-semibold text-slate-800">Диагностика</p>
+          <p>
+            Эффективный сервер: <code className="bg-white px-1 rounded">{meta.diagnostics.smtpHostEffective || "—"}</code>{" "}
+            (secure: {meta.diagnostics.secure ? "да" : "нет"})
+          </p>
+          <p>
+            Host из БД: {meta.diagnostics.hostFromDatabase ? "да" : "нет"}, пользователь SMTP:{" "}
+            {meta.diagnostics.smtpUserSet ? "да" : "нет"}, пароль: {meta.diagnostics.smtpPassSet ? "задан" : "нет"},{" "}
+            From: {meta.diagnostics.fromSet ? "да" : "нет"}
+          </p>
+        </div>
       ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">

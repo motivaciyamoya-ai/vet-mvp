@@ -42,6 +42,15 @@ export class AdminMailService {
       effectiveSmtpConfigured: !!resolved?.host,
       placeholdersHint:
         'В шаблонах подтверждения: {{verifyUrl}}, {{email}}. В рассылке: {{email}}, {{frontendUrl}}.',
+      lastSmtpError: this.alerts.getLastMailError(),
+      diagnostics: {
+        hostFromDatabase: !!(map.get('mail.smtp.host')?.trim()),
+        smtpHostEffective: resolved?.host ? `${resolved.host}:${resolved.port}` : '',
+        secure: resolved?.secure ?? false,
+        smtpUserSet: !!(resolved?.user?.trim()),
+        smtpPassSet: !!resolved?.pass,
+        fromSet: !!(resolved?.from?.trim()),
+      },
     };
   }
 
@@ -97,14 +106,26 @@ export class AdminMailService {
     const cfg = await this.mailConfig.resolve();
     if (!cfg?.host) {
       throw new BadRequestException(
-        'SMTP не настроен: задайте mail.smtp.host в админке или SMTP_HOST в окружении.',
+        'SMTP не настроен: задайте mail.smtp.host в админке или SMTP_HOST в окружении (корневой .env для docker compose).',
+      );
+    }
+    const verify = await this.alerts.verifySmtpConnection(cfg);
+    if (!verify.ok) {
+      throw new BadRequestException(
+        `Соединение с SMTP не установлено: ${verify.message}. Проверьте host/port, SSL (465 secure=true), логин/пароль, файрвол.`,
       );
     }
     const subject = '[VetConnect] Тест почты';
     const text = `Письмо отправлено с ${cfg.host}:${cfg.port} в ${new Date().toISOString()}\nПолучатель: ${adminEmail}\n`;
-    const ok = await this.alerts.sendTransactional(adminEmail, subject, text, `<pre>${text}</pre>`, cfg);
-    if (!ok) {
-      throw new BadRequestException('Отправка не удалась — см. логи backend (SMTP).');
+    const sent = await this.alerts.sendTransactionalDetailed(
+      adminEmail,
+      subject,
+      text,
+      `<pre>${text}</pre>`,
+      cfg,
+    );
+    if (!sent.ok) {
+      throw new BadRequestException(`Отправка отклонена сервером: ${sent.message}`);
     }
     return { ok: true };
   }

@@ -67,10 +67,12 @@ export class MailConfigService {
     });
     const map = new Map(rows.map((r) => [r.key, r.value] as [string, string]));
 
+    /** Непустое в БД имеет приоритет; пустая строка в SiteSetting считается «не задано» и берётся env. */
     const pick = (dbKey: string, envVal: string | undefined) => {
       const raw = map.get(dbKey);
       if (raw !== undefined) {
-        return raw.trim();
+        const t = raw.trim();
+        if (t !== '') return t;
       }
       return (envVal ?? '').trim();
     };
