@@ -18,6 +18,7 @@ import {
   CalendarDays,
   Wrench,
   Share2,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -140,6 +141,10 @@ export default function AdminLayout() {
           <NavLink to="/admin/dosage-drugs" className={linkClass}>
             <Pill className="w-4 h-4 shrink-0" />
             Препараты · дозы
+          </NavLink>
+          <NavLink to="/admin/ai-tools" className={linkClass}>
+            <Sparkles className="w-4 h-4 shrink-0" />
+            AI-инструменты
           </NavLink>
           <NavLink to="/admin/push" className={linkClass}>
             <Bell className="w-4 h-4 shrink-0" />
