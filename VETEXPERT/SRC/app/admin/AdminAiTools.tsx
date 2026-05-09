@@ -118,6 +118,35 @@ export default function AdminAiTools() {
         </p>
       </div>
 
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
+        <p className="font-semibold text-slate-900">Быстрый старт (для новичка)</p>
+        <ol className="list-decimal pl-5 space-y-1 text-sm text-slate-700">
+          <li>
+            Выберите <strong>провайдера</strong>: <strong>Ollama</strong> (бесплатно, на вашем сервере) или{" "}
+            <strong>OpenAI</strong> (платно, по API‑ключу).
+          </li>
+          <li>
+            Заполните блок провайдера ниже (минимально обязательные поля подсвечены примерами).
+          </li>
+          <li>
+            Нажмите <strong>Сохранить</strong>, затем откройте пользовательский AI‑анализ и сделайте тестовый запрос.
+          </li>
+        </ol>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <p className="font-semibold">Важно</p>
+          <ul className="list-disc pl-5 mt-1 space-y-1">
+            <li>
+              Включение ниже — это доступ пользователей к{" "}
+              <code className="bg-white px-1 rounded">POST /api/ai/medical-analyzer</code>.
+            </li>
+            <li>
+              Ключи API лучше хранить в env. Этот экран позволяет хранить их в базе (SiteSetting) — делайте так только
+              если вам это удобно и вы доверяете админ‑доступу.
+            </li>
+          </ul>
+        </div>
+      </section>
+
       {err ? <p className="text-red-600 text-sm">{err}</p> : null}
       {ok ? <p className="text-emerald-700 text-sm">{ok}</p> : null}
 
@@ -141,6 +170,10 @@ export default function AdminAiTools() {
               <p className="text-slate-600">
                 Env: OPENAI_API_KEY {data.hints.envFallback.hasOpenAiKeyEnv ? "задан" : "не задан"}, AI_PROVIDER{" "}
                 {data.hints.envFallback.hasAiProviderEnv ? "задан" : "не задан"}
+              </p>
+              <p className="text-xs text-slate-500">
+                Если значение «не меняется», значит оно берётся из env или уже сохранено в базе. Этот блок показывает
+                именно то, чем будет пользоваться API прямо сейчас.
               </p>
               {data.storedKeys.length ? (
                 <p className="text-xs text-slate-500">
@@ -181,9 +214,39 @@ export default function AdminAiTools() {
                 <option value="ollama">Ollama (локально / в Docker)</option>
               </select>
             </label>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 space-y-1">
+              <p className="font-semibold text-slate-900">Что выбрать?</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>
+                  <strong>Ollama</strong>: проще всего для старта, без ключей. Нужна vision‑модель (например{" "}
+                  <code className="bg-white px-1 rounded">llava:7b</code>) и ресурсы сервера (CPU/RAM, лучше GPU).
+                </li>
+                <li>
+                  <strong>OpenAI</strong>: лучше качество, но нужен ключ и списания по API. Подходит, если не хотите
+                  держать модели у себя.
+                </li>
+              </ul>
+            </div>
 
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 space-y-4">
               <p className="text-sm font-semibold text-emerald-950">OpenAI</p>
+              <div className="text-xs text-slate-700 space-y-1">
+                <p className="font-semibold text-slate-900">Как заполнить</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    <strong>API key</strong>: ключ вида <code className="bg-white px-1 rounded">sk-…</code>. Можно хранить
+                    в env (<code className="bg-white px-1 rounded">OPENAI_API_KEY</code>) или в базе через чекбокс ниже.
+                  </li>
+                  <li>
+                    <strong>Модель</strong>: например <code className="bg-white px-1 rounded">gpt-4o-mini</code>. Если не
+                    уверены — оставьте так.
+                  </li>
+                  <li>
+                    <strong>Базовый URL</strong>: обычно <code className="bg-white px-1 rounded">https://api.openai.com/v1</code>.
+                    Нужен только если используете прокси/совместимый API.
+                  </li>
+                </ul>
+              </div>
               <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
@@ -211,6 +274,9 @@ export default function AdminAiTools() {
                   placeholder={changeOpenaiKey ? "sk-..." : "— не менять —"}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100"
                 />
+                <p className="text-xs text-slate-600">
+                  Совет: если ключ хранится в env, оставьте чекбокс выключенным — так ключ никогда не попадёт в базу.
+                </p>
               </label>
               <label className="block space-y-1">
                 <span className="text-sm font-medium text-slate-800">Модель</span>
@@ -220,6 +286,10 @@ export default function AdminAiTools() {
                   placeholder="gpt-4o-mini"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
                 />
+                <p className="text-xs text-slate-600">
+                  Если модель не поддерживает vision/изображения — анализ снимков будет падать. Для анамнеза (текст)
+                  достаточно обычной chat‑модели.
+                </p>
               </label>
               <label className="block space-y-1">
                 <span className="text-sm font-medium text-slate-800">Базовый URL API</span>
@@ -229,11 +299,31 @@ export default function AdminAiTools() {
                   placeholder="https://api.openai.com/v1"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500"
                 />
+                <p className="text-xs text-slate-600">
+                  Пример: <code className="bg-white px-1 rounded">https://api.openai.com/v1</code>. Слэш в конце не нужен.
+                </p>
               </label>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
               <p className="text-sm font-semibold text-slate-900">Ollama (vision)</p>
+              <div className="text-xs text-slate-700 space-y-1">
+                <p className="font-semibold text-slate-900">Как заполнить</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    <strong>Базовый URL</strong>: если Ollama в Docker Compose этого проекта —{" "}
+                    <code className="bg-white px-1 rounded">http://ollama:11434</code>.
+                  </li>
+                  <li>
+                    <strong>Vision‑модель</strong>: имя модели в Ollama, например{" "}
+                    <code className="bg-white px-1 rounded">llava:7b</code>.
+                  </li>
+                  <li>
+                    После выбора модели её нужно один раз скачать на сервер:{" "}
+                    <code className="bg-white px-1 rounded">docker exec -it vet-mvp-ollama-1 ollama pull llava:7b</code>.
+                  </li>
+                </ul>
+              </div>
               <label className="block space-y-1">
                 <span className="text-sm font-medium text-slate-800">Базовый URL</span>
                 <input
@@ -242,6 +332,10 @@ export default function AdminAiTools() {
                   placeholder="http://ollama:11434"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500"
                 />
+                <p className="text-xs text-slate-600">
+                  Важно: <code className="bg-white px-1 rounded">localhost</code> внутри Docker‑контейнера — это сам контейнер,
+                  а не хост. Поэтому для Compose используйте имя сервиса <code className="bg-white px-1 rounded">ollama</code>.
+                </p>
               </label>
               <label className="block space-y-1">
                 <span className="text-sm font-medium text-slate-800">Vision-модель</span>
@@ -251,6 +345,9 @@ export default function AdminAiTools() {
                   placeholder="llava:7b"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
                 />
+                <p className="text-xs text-slate-600">
+                  Если указать модель, которой нет в Ollama, API вернёт ошибку. Скачайте модель командой выше.
+                </p>
               </label>
             </div>
 
@@ -266,6 +363,9 @@ export default function AdminAiTools() {
                   onChange={(e) => setAnalyzerTemperature(Number(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
                 />
+                <p className="text-xs text-slate-600">
+                  Чем ниже — тем стабильнее и «суше» ответы. Рекомендуем: <strong>0.2–0.4</strong>.
+                </p>
               </label>
               <label className="block space-y-1">
                 <span className="text-sm font-medium text-slate-800">Максимум изображений за запрос (1–6)</span>
@@ -278,8 +378,38 @@ export default function AdminAiTools() {
                   onChange={(e) => setAnalyzerMaxImages(Number(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
                 />
+                <p className="text-xs text-slate-600">
+                  Больше изображений — дороже/медленнее и выше риск таймаутов. Обычно хватает <strong>3–6</strong>.
+                </p>
               </label>
             </div>
+
+            <details className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                Частые проблемы и как их решить
+              </summary>
+              <div className="mt-3 space-y-2 text-sm text-slate-700">
+                <p>
+                  <strong>403 при запросе анализа</strong> — выключен флаг «Разрешить…» или{" "}
+                  <code className="bg-white px-1 rounded">AI_MEDICAL_ANALYZER_ENABLED=false</code>.
+                </p>
+                <p>
+                  <strong>OpenAI: “не настроен ключ”</strong> — не задан{" "}
+                  <code className="bg-white px-1 rounded">OPENAI_API_KEY</code> и вы не сохранили ключ в базе.
+                </p>
+                <p>
+                  <strong>Ollama: connection refused / 404</strong> — неверный URL или контейнер Ollama не запущен.
+                  Для Compose используйте <code className="bg-white px-1 rounded">http://ollama:11434</code>.
+                </p>
+                <p>
+                  <strong>Ollama: model not found</strong> — скачайте модель:{" "}
+                  <code className="bg-white px-1 rounded">docker exec -it vet-mvp-ollama-1 ollama pull llava:7b</code>.
+                </p>
+                <p>
+                  <strong>Долго/таймаут</strong> — уменьшите «Максимум изображений» и/или используйте более лёгкую модель.
+                </p>
+              </div>
+            </details>
 
             <div className="flex flex-wrap gap-2 pt-1">
               <button
