@@ -60,6 +60,8 @@ import { SecurityPoliciesService } from '../security/security-policies.service';
 import { AdminTotpGuard } from './guards/admin-totp.guard';
 import { AdminAiToolsService } from './admin-ai-tools.service';
 import { AdminAiToolsConfigDto } from './dto/admin-ai-tools.dto';
+import { AdminMailService } from './admin-mail.service';
+import { AdminMailBroadcastDto, AdminMailPutDto } from './dto/admin-mail.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -78,6 +80,7 @@ export class AdminController {
     private readonly alerts: AlertsService,
     private readonly policies: SecurityPoliciesService,
     private readonly aiToolsAdmin: AdminAiToolsService,
+    private readonly adminMail: AdminMailService,
   ) {}
 
   @Get('stats')
@@ -205,6 +208,56 @@ export class AdminController {
     if (k.startsWith('site.security.')) {
       this.policies.invalidateCache();
     }
+    return out;
+  }
+
+  @Get('mail/settings')
+  mailSettings() {
+    return this.adminMail.getSettings();
+  }
+
+  @Put('mail/settings')
+  async putMailSettings(@Body() dto: AdminMailPutDto, @CurrentUser() user: AuthUser, @Req() req: Request) {
+    const out = await this.adminMail.putSettings(dto);
+    await this.audit.log({
+      action: 'admin.mail.settings.put',
+      actorUserId: user.id,
+      actorEmail: user.email,
+      details: { keys: Object.keys(dto).filter((k) => (dto as Record<string, unknown>)[k] !== undefined) },
+      ip: req.ip,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+    });
+    return out;
+  }
+
+  @Post('mail/test')
+  async mailTest(@CurrentUser() user: AuthUser, @Req() req: Request) {
+    const out = await this.adminMail.sendTestTo(user.email);
+    await this.audit.log({
+      action: 'admin.mail.test',
+      actorUserId: user.id,
+      actorEmail: user.email,
+      ip: req.ip,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+    });
+    return out;
+  }
+
+  @Post('mail/broadcast')
+  async mailBroadcast(@Body() dto: AdminMailBroadcastDto, @CurrentUser() user: AuthUser, @Req() req: Request) {
+    const out = await this.adminMail.broadcast(dto, user.id);
+    await this.audit.log({
+      action: 'admin.mail.broadcast',
+      actorUserId: user.id,
+      actorEmail: user.email,
+      details: {
+        audience: dto.audience,
+        dryRun: !!dto.dryRun,
+        subject: dto.subject.slice(0, 120),
+      },
+      ip: req.ip,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+    });
     return out;
   }
 

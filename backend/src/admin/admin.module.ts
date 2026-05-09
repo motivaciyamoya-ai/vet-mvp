@@ -10,6 +10,7 @@ import { ModerationModule } from '../moderation/moderation.module';
 import { LiveTrafficModule } from '../live-traffic/live-traffic.module';
 import { AdminTotpGuard } from './guards/admin-totp.guard';
 import { AdminAiToolsService } from './admin-ai-tools.service';
+import { AdminMailService } from './admin-mail.service';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { AdminAiToolsService } from './admin-ai-tools.service';
     LiveTrafficModule,
   ],
   controllers: [AdminController, AdminSecurityController],
-  providers: [AdminService, AdminDashboardService, AdminTotpGuard, AdminAiToolsService],
-  exports: [AdminService, AdminDashboardService, AdminAiToolsService],
+  providers: [AdminService, AdminDashboardService, AdminTotpGuard, AdminAiToolsService, AdminMailService],
+  exports: [AdminService, AdminDashboardService, AdminAiToolsService, AdminMailService],
 })
 export class AdminModule {}

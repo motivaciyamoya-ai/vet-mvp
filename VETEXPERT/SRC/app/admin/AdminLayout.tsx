@@ -20,6 +20,7 @@ import {
   Wrench,
   Share2,
   Sparkles,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -150,6 +151,10 @@ export default function AdminLayout() {
           <NavLink to="/admin/ai-tools" className={linkClass}>
             <Sparkles className="w-4 h-4 shrink-0" />
             AI-инструменты
+          </NavLink>
+          <NavLink to="/admin/mail" className={linkClass}>
+            <Mail className="w-4 h-4 shrink-0" />
+            Почта
           </NavLink>
           <NavLink to="/admin/push" className={linkClass}>
             <Bell className="w-4 h-4 shrink-0" />

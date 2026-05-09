@@ -1,51 +1,104 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { MailConfigService, type MailSmtpResolved } from './mail-config.service';
 
 @Injectable()
 export class AlertsService {
   private readonly log = new Logger(AlertsService.name);
-  private transporter: nodemailer.Transporter | null = null;
-  private readonly to: string;
+  private transportCache: { sig: string; transport: nodemailer.Transporter } | null = null;
 
-  constructor(private readonly config: ConfigService) {
-    this.to = (this.config.get<string>('ALERT_EMAIL_TO') ?? '').trim();
-    const host = (this.config.get<string>('SMTP_HOST') ?? '').trim();
-    // Транспорт нужен и для писем пользователям (подтверждение email), и для алертов админу.
-    // ALERT_EMAIL_TO обязателен только для метода send() — адрес получателя админских писем.
-    if (host) {
-      const port = parseInt(this.config.get<string>('SMTP_PORT') ?? '587', 10) || 587;
-      const user = (this.config.get<string>('SMTP_USER') ?? '').trim();
-      const pass = (this.config.get<string>('SMTP_PASS') ?? '').trim();
-      const secure =
-        this.config.get<string>('SMTP_SECURE')?.trim() === 'true' || port === 465;
-      this.transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: user ? { user, pass } : undefined,
-      });
+  constructor(private readonly mailConfig: MailConfigService) {}
+
+  /** Сбросить кэш транспорта после смены настроек в админке. */
+  invalidateTransportCache() {
+    this.transportCache = null;
+    this.mailConfig.invalidate();
+  }
+
+  private smtpSignature(cfg: MailSmtpResolved) {
+    return JSON.stringify({
+      h: cfg.host,
+      p: cfg.port,
+      s: cfg.secure,
+      u: cfg.user,
+      pw: cfg.pass,
+    });
+  }
+
+  private async ensureTransport(cfg: MailSmtpResolved): Promise<nodemailer.Transporter> {
+    const sig = this.smtpSignature(cfg);
+    if (this.transportCache?.sig === sig) {
+      return this.transportCache.transport;
     }
+    const transport = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure,
+      auth: cfg.user ? { user: cfg.user, pass: cfg.pass } : undefined,
+    });
+    this.transportCache = { sig, transport };
+    return transport;
   }
 
-  private fromAddress() {
-    return (this.config.get<string>('SMTP_FROM') ?? this.config.get<string>('SMTP_USER') ?? 'alerts@localhost').trim();
+  private logVerificationFallback(emailNorm: string, verifyUrl: string) {
+    this.log.warn(`Подтвердите email (${emailNorm}): ${verifyUrl}`);
   }
 
-  /** Письмо на произвольный адрес (подтверждение email и т. п.). Достаточно задать SMTP_HOST (+ при необходимости SMTP_USER/PASS). */
-  async sendTransactional(to: string, subject: string, text: string, html?: string): Promise<boolean> {
+  private applyTpl(tpl: string, vars: { verifyUrl: string; email: string }) {
+    return tpl.replace(/\{\{verifyUrl\}\}/g, vars.verifyUrl).replace(/\{\{email\}\}/g, vars.email);
+  }
+
+  /**
+   * Письмо подтверждения регистрации. Без SMTP — только запись в лог со ссылкой.
+   */
+  async sendVerificationMail(toEmail: string, token: string): Promise<boolean> {
+    const emailNorm = toEmail.trim().toLowerCase();
+    const cfg = await this.mailConfig.resolve();
+    const base = (cfg?.frontendUrl ?? 'http://localhost:5173').replace(/\/$/, '');
+    const verifyUrl = `${base}/verify-email?token=${encodeURIComponent(token)}`;
+
+    if (!cfg?.host) {
+      this.logVerificationFallback(emailNorm, verifyUrl);
+      return false;
+    }
+
+    const subject = this.applyTpl(cfg.verifySubject, { verifyUrl, email: emailNorm });
+    const text = this.applyTpl(cfg.verifyTextTpl, { verifyUrl, email: emailNorm });
+    const html = this.applyTpl(cfg.verifyHtmlTpl, { verifyUrl, email: emailNorm });
+
+    const ok = await this.sendTransactional(emailNorm, subject, text, html, cfg);
+    if (!ok) {
+      this.logVerificationFallback(emailNorm, verifyUrl);
+    } else {
+      this.log.log(`Письмо с подтверждением отправлено на ${emailNorm}`);
+    }
+    return ok;
+  }
+
+  /**
+   * Письмо на произвольный адрес. Можно передать уже резолвнутый cfg (рассылка), иначе читается resolve().
+   */
+  async sendTransactional(
+    to: string,
+    subject: string,
+    text: string,
+    html?: string,
+    cfgOverride?: MailSmtpResolved | null,
+  ): Promise<boolean> {
     const addr = to?.trim();
     if (!addr) {
       this.log.warn(`Transactional mail skipped: empty recipient, subject=${subject}`);
       return false;
     }
-    if (!this.transporter) {
-      this.log.debug(`Transactional mail skipped (no SMTP_HOST): to=${addr}`);
+    const cfg = cfgOverride !== undefined ? cfgOverride : await this.mailConfig.resolve();
+    if (!cfg?.host) {
+      this.log.debug(`Transactional mail skipped (no SMTP host): to=${addr}`);
       return false;
     }
     try {
-      await this.transporter.sendMail({
-        from: this.fromAddress(),
+      const transport = await this.ensureTransport(cfg);
+      await transport.sendMail({
+        from: cfg.from,
         to: addr,
         subject,
         text,
@@ -53,22 +106,22 @@ export class AlertsService {
       });
       return true;
     } catch (e: unknown) {
-      this.log.error(
-        `SMTP transactional failed (to=${addr}): ${e instanceof Error ? e.message : e}`,
-      );
+      this.log.error(`SMTP transactional failed (to=${addr}): ${e instanceof Error ? e.message : e}`);
       return false;
     }
   }
 
   async send(subject: string, text: string) {
-    if (!this.transporter || !this.to) {
-      this.log.warn(`Alert (no SMTP): ${subject} — ${text.slice(0, 500)}`);
+    const cfg = await this.mailConfig.resolve();
+    if (!cfg?.host || !cfg.alertTo) {
+      this.log.warn(`Alert (no SMTP или нет mail.alert.to / ALERT_EMAIL_TO): ${subject} — ${text.slice(0, 500)}`);
       return;
     }
     try {
-      await this.transporter.sendMail({
-        from: this.fromAddress(),
-        to: this.to,
+      const transport = await this.ensureTransport(cfg);
+      await transport.sendMail({
+        from: cfg.from,
+        to: cfg.alertTo,
         subject,
         text,
       });

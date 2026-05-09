@@ -14,6 +14,9 @@ services:
   backend:
     build:
       context: ./backend
+    # Подхватывает JWT, SMTP, FRONTEND_URL и др. из файла в корне репозитория. Если файла нет — создайте: touch .env
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       PORT: 3000
