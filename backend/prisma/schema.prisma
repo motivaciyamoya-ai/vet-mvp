@@ -130,6 +130,7 @@ model User {
   auditLogs AuditLog[] @relation("AuditActor")
 
   aiMedicalAnalyzerRuns AiMedicalAnalyzerRun[]
+  aiRoleAssistantMessages AiRoleAssistantMessage[]
 }
 
 model AiMedicalAnalyzerRun {
