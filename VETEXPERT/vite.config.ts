@@ -27,6 +27,11 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/sitemap.xml': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: () => '/api/reference/sitemap.xml',
+      },
     },
   },
 

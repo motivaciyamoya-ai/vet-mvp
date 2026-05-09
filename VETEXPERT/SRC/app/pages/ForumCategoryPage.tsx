@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { useEffect, useMemo, useState } from "react";
 import ForumDiscussionList from "../components/ForumDiscussionList";
 import { apiFetch } from "../../lib/api";
+import { applyRoutePageSeo, getCachedSiteSeo, plainTextExcerpt } from "../../lib/documentSeo";
 import type { FeedThreadFromApi, ForumDiscussionRow } from "../../lib/forumFeedMapping";
 import { discussionFromFeedThread } from "../../lib/forumFeedMapping";
 
@@ -44,6 +45,19 @@ export default function ForumCategoryPage() {
     void Promise.all([loadName, loadThreads]).finally(() => setLoading(false));
   }, [slug]);
 
+  useEffect(() => {
+    if (!slug || !categoryName) return;
+    const path = `/forum/category/${slug}`;
+    const desc = plainTextExcerpt(
+      `Ветеринарный форум VetConnect — раздел «${categoryName}»: темы, комментарии коллег и клинические обсуждения.`,
+      300,
+    );
+    applyRoutePageSeo(path, getCachedSiteSeo(), {
+      title: `${categoryName} — темы форума`,
+      description: desc,
+    });
+  }, [slug, categoryName]);
+
   const discussions: ForumDiscussionRow[] = useMemo(
     () => threads.map((t) => discussionFromFeedThread(t)),
     [threads],
@@ -72,7 +86,9 @@ export default function ForumCategoryPage() {
         </Link>
         <div>
           <h1 className="font-bold text-xl sm:text-2xl lg:text-3xl text-gray-900">{categoryName || "Раздел"}</h1>
-          <p className="text-gray-600 text-sm lg:text-base mt-1">Темы из этой категории</p>
+          <p className="text-gray-600 text-sm lg:text-base mt-1">
+            Темы и комментарии коллег по направлению «{categoryName || "форум"}»: обсуждения для ветспециалистов.
+          </p>
         </div>
       </div>
 

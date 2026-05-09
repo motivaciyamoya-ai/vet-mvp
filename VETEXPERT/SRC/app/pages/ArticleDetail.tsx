@@ -1,6 +1,7 @@
 import { ArrowLeft, Clock, User, MapPin, Briefcase } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useEffect, useState } from "react";
+import { applyRoutePageSeo, getCachedSiteSeo, plainTextExcerpt } from "../../lib/documentSeo";
 import { apiFetch, assetUrl } from "../../lib/api";
 import TranslatedContent from "../components/TranslatedContent";
 import ArticleCommentsSection from "../components/ArticleCommentsSection";
@@ -51,6 +52,67 @@ export default function ArticleDetail() {
   const navigate = useNavigate();
   const { user, authReady } = useAuth();
   const [state, setState] = useState<ViewState>({ status: "loading" });
+
+  useEffect(() => {
+    if (state.status !== "api" && state.status !== "demo") return;
+    const idParam = id?.trim();
+    if (!idParam) return;
+    const path = `/articles/${idParam}`;
+    if (state.status === "api") {
+      const a = state.article;
+      const desc = plainTextExcerpt(`${a.category.name}. ${a.title}. ${a.excerpt}`, 300);
+      applyRoutePageSeo(path, getCachedSiteSeo(), { title: a.title, description: desc });
+    } else {
+      const a = state.article;
+      const desc = plainTextExcerpt(`${a.category}. ${a.title}. ${a.excerpt}`, 300);
+      applyRoutePageSeo(path, getCachedSiteSeo(), { title: a.title, description: desc });
+    }
+  }, [state, id]);
+
+  useEffect(() => {
+    const sid = "ld-json-article-page";
+    if (state.status !== "api" && state.status !== "demo") {
+      document.getElementById(sid)?.remove();
+      return;
+    }
+    const idParam = id?.trim();
+    if (!idParam) return;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/articles/${encodeURIComponent(idParam)}`;
+    let headline = "";
+    let section = "";
+    let datePublished = "";
+    if (state.status === "api") {
+      const a = state.article;
+      headline = a.title;
+      section = a.category.name;
+      datePublished = a.createdAt;
+    } else {
+      const a = state.article;
+      headline = a.title;
+      section = a.category;
+      datePublished = new Date().toISOString();
+    }
+    const payload = {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline,
+      articleSection: section,
+      inLanguage: "ru",
+      url,
+      description: plainTextExcerpt(state.status === "api" ? state.article.excerpt : state.article.excerpt, 500),
+      datePublished,
+    };
+    document.getElementById(sid)?.remove();
+    const el = document.createElement("script");
+    el.id = sid;
+    el.type = "application/ld+json";
+    el.textContent = JSON.stringify(payload);
+    document.head.appendChild(el);
+    return () => {
+      document.getElementById(sid)?.remove();
+    };
+  }, [state, id]);
 
   useEffect(() => {
     if (!id?.trim()) {

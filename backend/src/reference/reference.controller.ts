@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Header, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ForumService } from '../forum/forum.service';
 import { ReferenceService } from './reference.service';
@@ -62,5 +62,12 @@ export class ReferenceController {
   @Get('forum-heroes/by-category-stats')
   forumHeroesByCategoryStats() {
     return this.forum.heroesStatsByCategory();
+  }
+
+  /** Динамическая карта сайта (статьи, темы форума, разделы). Публично, без авторизации. */
+  @Get('sitemap.xml')
+  @Header('Content-Type', 'application/xml; charset=utf-8')
+  sitemapXml(): Promise<string> {
+    return this.ref.buildSitemapXml();
   }
 }

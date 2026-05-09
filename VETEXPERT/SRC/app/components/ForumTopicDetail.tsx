@@ -24,6 +24,7 @@ import ForumRenderedBody from "./ForumRenderedBody";
 import { ForumUrgencyBadgeOnGradient, ForumUrgencyIcon } from "./ForumUrgencyVisual";
 import UserAvatar from "./UserAvatar";
 import { apiFetch, apiUploadThreadImage, assetUrl, getOrCreateForumVisitorId } from "../../lib/api";
+import { applyRoutePageSeo, getCachedSiteSeo, plainTextExcerpt } from "../../lib/documentSeo";
 import { creatorForumTagLabels, tagsLookHot, urgencyFromTags } from "../../lib/forumTags";
 import ReportAbuseTrigger from "./ReportAbuseModal";
 import type { PublicModerationDto } from "../../lib/moderationUi";
@@ -208,6 +209,45 @@ export default function ForumTopicDetail() {
       cancelled = true;
     };
   }, [isLegacyNumericId, apiThread?.id, user?.id]);
+
+  useEffect(() => {
+    if (!apiThread || isLegacyNumericId || !rawId) return;
+    const path = `/forum/topic/${rawId}`;
+    const opener = apiThread.posts[0]?.body ?? "";
+    const desc = plainTextExcerpt(`Раздел «${apiThread.category.name}». ${apiThread.title}. ${opener}`, 300);
+    applyRoutePageSeo(path, getCachedSiteSeo(), { title: apiThread.title, description: desc });
+  }, [apiThread, rawId, isLegacyNumericId]);
+
+  useEffect(() => {
+    const sid = "ld-json-forum-thread-page";
+    if (!apiThread || isLegacyNumericId || !rawId) {
+      document.getElementById(sid)?.remove();
+      return;
+    }
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/forum/topic/${encodeURIComponent(rawId)}`;
+    const openerText = plainTextExcerpt(apiThread.posts[0]?.body ?? "", 450);
+    const replyCount = Math.max(0, apiThread.posts.length - 1);
+    const payload = {
+      "@context": "https://schema.org",
+      "@type": "DiscussionForumPosting",
+      headline: apiThread.title,
+      articleSection: apiThread.category.name,
+      inLanguage: "ru",
+      url,
+      ...(openerText ? { text: openerText } : {}),
+      commentCount: replyCount,
+    };
+    document.getElementById(sid)?.remove();
+    const el = document.createElement("script");
+    el.id = sid;
+    el.type = "application/ld+json";
+    el.textContent = JSON.stringify(payload);
+    document.head.appendChild(el);
+    return () => {
+      document.getElementById(sid)?.remove();
+    };
+  }, [apiThread, rawId, isLegacyNumericId]);
 
   const toggleTopicLike = useCallback(() => {
     if (isLegacyNumericId || !apiThread?.id || likeBusy) return;
@@ -561,7 +601,7 @@ export default function ForumTopicDetail() {
             </span>
             <span className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
-              <span className="font-semibold">{replies.length}</span> ответов
+              <span className="font-semibold">{replies.length}</span> комментариев и ответов
             </span>
             <span className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
@@ -684,7 +724,7 @@ export default function ForumTopicDetail() {
       <div className="space-y-4">
         <h3 className="font-bold text-lg lg:text-xl flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-emerald-600" />
-          Ответы ({replies.length})
+          Комментарии ({replies.length})
         </h3>
         {replies.map((reply) => {
           const pn = reply.author.profile;
@@ -852,7 +892,7 @@ export default function ForumTopicDetail() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 lg:p-6">
-        <h3 className="font-bold text-base lg:text-lg mb-4">Ваш ответ</h3>
+        <h3 className="font-bold text-base lg:text-lg mb-4">Ваш комментарий</h3>
         {threadLocked ? (
           <p className="text-sm text-gray-600 py-6 text-center bg-gray-50 rounded-lg border border-gray-100 px-4">
             Тема закрыта (выбрано решение): новые ответы недоступны, тексты сообщений нельзя изменить.

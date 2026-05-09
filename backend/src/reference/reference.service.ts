@@ -330,4 +330,80 @@ export class ReferenceService {
 
     return { enabled, title, message, updatedAt };
   }
+
+  /**
+   * Карта сайта для поисковиков: хабы, разделы форума, темы и опубликованные статьи.
+   * Базовый origin: `seo.canonical_origin` → `FRONTEND_URL` → стабильный fallback.
+   */
+  async buildSitemapXml(): Promise<string> {
+    const seo = await this.getPublicSiteSeo();
+    const baseRaw =
+      seo.canonicalOrigin?.trim() ||
+      (process.env.FRONTEND_URL ?? '').trim() ||
+      SEO_FALLBACK_ORIGIN_FOR_ASSETS;
+    const base = baseRaw.replace(/\/+$/, '');
+
+    const esc = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const urlRow = (loc: string, changefreq: string, priority: string, lastmod?: string) => {
+      const lm = lastmod ? `\n    <lastmod>${esc(lastmod)}</lastmod>` : '';
+      return `  <url>
+    <loc>${esc(loc)}</loc>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>${lm}
+  </url>`;
+    };
+
+    const staticPaths: Array<[string, string, string]> = [
+      [`${base}/`, 'daily', '1.0'],
+      [`${base}/forum`, 'daily', '0.95'],
+      [`${base}/articles`, 'weekly', '0.9'],
+      [`${base}/events`, 'weekly', '0.85'],
+      [`${base}/specialists`, 'weekly', '0.8'],
+      [`${base}/tools`, 'weekly', '0.85'],
+      [`${base}/marketplace`, 'daily', '0.8'],
+      [`${base}/privacy`, 'yearly', '0.25'],
+      [`${base}/cookies`, 'yearly', '0.25'],
+    ];
+
+    const lines: string[] = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      ...staticPaths.map(([loc, ch, pr]) => urlRow(loc, ch, pr)),
+    ];
+
+    const [forumCats, forumThreads, articles] = await Promise.all([
+      this.prisma.forumCategory.findMany({
+        select: { slug: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      }),
+      this.prisma.forumThread.findMany({
+        select: { id: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 2500,
+      }),
+      this.prisma.article.findMany({
+        where: { published: true },
+        select: { id: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 4000,
+      }),
+    ]);
+
+    for (const c of forumCats) {
+      lines.push(urlRow(`${base}/forum/category/${encodeURIComponent(c.slug)}`, 'daily', '0.82'));
+    }
+    for (const t of forumThreads) {
+      const lm = t.updatedAt.toISOString().slice(0, 10);
+      lines.push(urlRow(`${base}/forum/topic/${encodeURIComponent(t.id)}`, 'weekly', '0.72', lm));
+    }
+    for (const a of articles) {
+      const lm = a.createdAt.toISOString().slice(0, 10);
+      lines.push(urlRow(`${base}/articles/${encodeURIComponent(a.id)}`, 'weekly', '0.78', lm));
+    }
+
+    lines.push('</urlset>');
+    return lines.join('\n');
+  }
 }
