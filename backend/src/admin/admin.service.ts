@@ -3,7 +3,6 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { ListingType, Prisma, SosStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -30,7 +29,6 @@ import {
   AdminPatchJobTitleDto,
 } from './dto/admin-reference.dto';
 import { AdminPatchUserDto } from './dto/admin-users.dto';
-import { AdminSetUserVetcoinDto } from './dto/admin-users-vetcoin.dto';
 import { AdminPatchReportDto } from './dto/admin-misc.dto';
 import { ModerationService } from '../moderation/moderation.service';
 import { AuditService } from '../audit/audit.service';
@@ -778,58 +776,5 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) throw new NotFoundException('Пользователь не найден');
     return this.vetcoin.applyDelta(user.id, dto.delta, dto.reason.trim());
-  }
-
-  /**
-   * Установка абсолютного баланса VetCoin пользователю. Требуется пароль действующего администратора.
-   */
-  async setUserVetcoinBalance(
-    targetUserId: string,
-    dto: AdminSetUserVetcoinDto,
-    actor: AuthUser,
-    meta?: { ip?: string; userAgent?: string },
-  ) {
-    const actorUser = await this.prisma.user.findUnique({
-      where: { id: actor.id },
-      select: { passwordHash: true, email: true },
-    });
-    if (!actorUser?.passwordHash) throw new UnauthorizedException();
-    const passwordOk = await bcrypt.compare(dto.adminPassword, actorUser.passwordHash);
-    if (!passwordOk) {
-      throw new UnauthorizedException('Неверный пароль администратора');
-    }
-
-    const target = await this.prisma.user.findUnique({
-      where: { id: targetUserId },
-      select: { id: true, email: true, vetCoinBalance: true },
-    });
-    if (!target) throw new NotFoundException();
-
-    const newB = dto.vetCoinBalance;
-    if (!Number.isInteger(newB) || newB < 0) {
-      throw new BadRequestException('Баланс должен быть целым неотрицательным числом');
-    }
-
-    const delta = newB - target.vetCoinBalance;
-    const reasonTail = (dto.reason?.trim() || 'ручная установка баланса').slice(0, 400);
-    const reason = `ADMIN_SET_BALANCE ${actor.email} → ${target.email}: ${reasonTail}`;
-
-    const res = await this.vetcoin.applyDelta(targetUserId, delta, reason);
-
-    await this.audit.log({
-      action: 'admin.user.vetcoin_set',
-      actorUserId: actor.id,
-      actorEmail: actor.email,
-      details: {
-        targetUserId,
-        targetEmail: target.email,
-        previousBalance: target.vetCoinBalance,
-        newBalance: res.balance,
-      },
-      ip: meta?.ip,
-      userAgent: meta?.userAgent,
-    });
-
-    return { balance: res.balance, previousBalance: target.vetCoinBalance };
   }
 }

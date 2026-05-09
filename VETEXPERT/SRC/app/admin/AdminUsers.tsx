@@ -42,11 +42,6 @@ export default function AdminUsers() {
     city: "",
     verification: "NONE",
   });
-  const [vcNewBalance, setVcNewBalance] = useState("");
-  const [vcAdminPassword, setVcAdminPassword] = useState("");
-  const [vcReason, setVcReason] = useState("");
-  const [vcErr, setVcErr] = useState("");
-  const [vcSaving, setVcSaving] = useState(false);
 
   const load = useCallback(() => {
     setErr("");
@@ -73,10 +68,6 @@ export default function AdminUsers() {
 
   const openEdit = (u: UserRow) => {
     setEditing(u);
-    setVcErr("");
-    setVcAdminPassword("");
-    setVcReason("");
-    setVcNewBalance(String(u.vetCoinBalance ?? 0));
     setForm({
       email: u.email,
       role: u.role,
@@ -108,45 +99,6 @@ export default function AdminUsers() {
     }
   };
 
-  const saveVetcoin = async () => {
-    if (!editing) return;
-    const n = parseInt(vcNewBalance.replace(/\s/g, ""), 10);
-    if (!Number.isFinite(n) || n < 0 || n > 2147483647) {
-      setVcErr("Введите целое число от 0 до 2 147 483 647");
-      return;
-    }
-    if (!vcAdminPassword.trim()) {
-      setVcErr("Введите ваш пароль администратора для подтверждения");
-      return;
-    }
-    setVcErr("");
-    setVcSaving(true);
-    try {
-      const res = await apiFetch<{ balance: number; previousBalance: number }>(
-        `/api/admin/users/${editing.id}/vetcoin-balance`,
-        {
-          method: "POST",
-          json: {
-            vetCoinBalance: n,
-            adminPassword: vcAdminPassword,
-            ...(vcReason.trim() ? { reason: vcReason.trim() } : {}),
-          },
-        },
-      );
-      setEditing((prev) =>
-        prev ? { ...prev, vetCoinBalance: typeof res.balance === "number" ? res.balance : n } : prev,
-      );
-      setVcAdminPassword("");
-      setVcReason("");
-      setVcNewBalance(String(res.balance ?? n));
-      void load();
-    } catch (e: unknown) {
-      setVcErr(e instanceof Error ? e.message : "Не удалось сохранить баланс");
-    } finally {
-      setVcSaving(false);
-    }
-  };
-
   const remove = async (id: string) => {
     if (!confirm("Удалить пользователя? Связанный контент может помешать.")) return;
     try {
@@ -167,7 +119,7 @@ export default function AdminUsers() {
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Пользователи</h1>
           <p className="text-slate-600 mt-1 text-sm sm:text-base max-w-2xl">
-            Поиск по email и имени, роли и профиль. Баланс VetCoin виден в таблице; изменение баланса — только с вашим паролем.
+            Поиск по email и имени, роли и профиль. Баланс VetCoin в таблице — только для просмотра; начисления и списания — в разделе «VetCoin».
           </p>
         </div>
       </div>
@@ -306,58 +258,15 @@ export default function AdminUsers() {
               <p className="text-sm text-white/85 font-mono truncate mt-0.5">{editing.email}</p>
             </div>
             <div className="p-5 sm:p-6 space-y-5">
-              <div className="rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50/60 p-4 space-y-3">
-                <div className="flex items-center gap-2 text-amber-950 font-bold text-sm">
-                  <Coins className="w-5 h-5 text-amber-600" aria-hidden />
-                  VetCoin — баланс
-                </div>
-                <p className="text-xs text-amber-900/90 leading-relaxed">
-                  Текущий баланс:{" "}
-                  <strong className="tabular-nums">{formatCoins(editing.vetCoinBalance ?? 0)}</strong>. Новое значение
-                  записывается в журнал начислений. Обязательно подтвердите <strong>своим паролем администратора</strong>.
-                </p>
-                <label className="block text-xs font-semibold text-amber-950">
-                  Новый баланс (целое число)
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="mt-1 w-full rounded-lg border border-amber-200/90 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
-                    value={vcNewBalance}
-                    onChange={(e) => setVcNewBalance(e.target.value)}
-                  />
-                </label>
-                <label className="block text-xs font-semibold text-amber-950">
-                  Ваш пароль (подтверждение)
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    className="mt-1 w-full rounded-lg border border-amber-200/90 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
-                    value={vcAdminPassword}
-                    onChange={(e) => setVcAdminPassword(e.target.value)}
-                    placeholder="Пароль учётной записи ADMIN"
-                  />
-                </label>
-                <label className="block text-xs font-semibold text-amber-950">
-                  Комментарий в журнале (необязательно)
-                  <input
-                    className="mt-1 w-full rounded-lg border border-amber-200/90 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
-                    value={vcReason}
-                    onChange={(e) => setVcReason(e.target.value)}
-                    placeholder="Например: компенсация за сбой начисления"
-                  />
-                </label>
-                {vcErr ? <p className="text-xs text-red-700 font-medium">{vcErr}</p> : null}
-                <button
-                  type="button"
-                  disabled={vcSaving}
-                  className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-2.5 text-sm shadow-md hover:from-amber-600 hover:to-orange-600 disabled:opacity-50"
-                  onClick={() => void saveVetcoin()}
-                >
-                  {vcSaving ? "Сохранение…" : "Применить баланс VetCoin"}
-                </button>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <span className="text-xs font-semibold text-slate-600">VetCoin (только просмотр)</span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold tabular-nums px-3 py-1 text-sm">
+                  <Coins className="w-3.5 h-3.5" aria-hidden />
+                  {formatCoins(editing.vetCoinBalance ?? 0)}
+                </span>
               </div>
 
-              <div className="border-t border-slate-200 pt-5 space-y-3">
+              <div className="space-y-3">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Учётная запись и профиль</h3>
                 <label className="block text-sm">
                   <span className="text-slate-600 font-medium">Email</span>

@@ -9,7 +9,6 @@ import {
   Flag,
   Siren,
   Globe,
-  Bell,
   ArrowLeft,
   Shield,
   Settings2,
@@ -18,6 +17,8 @@ import {
   CalendarDays,
   Wrench,
   Share2,
+  Mail,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -104,6 +105,14 @@ export default function AdminLayout() {
           <NavLink to="/admin" end className={linkClass}>
             <LayoutDashboard className="w-4 h-4 shrink-0" />
             Обзор
+          </NavLink>
+          <NavLink to="/admin/mail" className={linkClass}>
+            <Mail className="w-4 h-4 shrink-0" />
+            Почта и SMTP
+          </NavLink>
+          <NavLink to="/admin/server-stats" className={linkClass}>
+            <Activity className="w-4 h-4 shrink-0" />
+            Сервер и метрики
           </NavLink>
           <NavLink to="/admin/users" className={linkClass}>
             <Users className="w-4 h-4 shrink-0" />
