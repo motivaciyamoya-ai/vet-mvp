@@ -76,6 +76,8 @@ services:
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-https://vetconnect.online/grafana/}
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_SERVER_ENFORCE_DOMAIN: "false"
+      # iframe с того же домена (админка); иначе Grafana может резать загрузку UI.
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
       # Rely on nginx basic-auth; allow anonymous viewer for iframe embed.
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
