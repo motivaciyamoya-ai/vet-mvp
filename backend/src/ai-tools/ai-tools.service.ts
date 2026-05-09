@@ -262,14 +262,28 @@ async function callOpenAiVisionJson(opts: {
     ],
   };
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${opts.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 120_000);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${opts.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e: unknown) {
+    const msg =
+      e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
+        ? 'OpenAI не ответил за 120 секунд. Попробуйте позже или уменьшите количество изображений.'
+        : `Не удалось связаться с OpenAI: ${e instanceof Error ? e.message : String(e)}`;
+    throw new BadRequestException(msg);
+  } finally {
+    clearTimeout(t);
+  }
   const text = await res.text();
   if (!res.ok) {
     throw new BadRequestException(`AI ошибка: HTTP ${res.status} ${text.slice(0, 500)}`);
@@ -319,11 +333,25 @@ async function callOllamaVisionJson(opts: {
     ],
   };
 
-  const res = await fetch(`${base}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 120_000);
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e: unknown) {
+    const msg =
+      e instanceof Error && (e.name === 'AbortError' || String(e.message).toLowerCase().includes('aborted'))
+        ? 'Ollama не ответила за 120 секунд. Решение: выберите более лёгкую модель, уменьшите max images или добавьте RAM/swap.'
+        : `Не удалось связаться с Ollama (${base}): ${e instanceof Error ? e.message : String(e)}`;
+    throw new BadRequestException(msg);
+  } finally {
+    clearTimeout(t);
+  }
   const text = await res.text();
   if (!res.ok) {
     const low = `${text ?? ''}`.toLowerCase();
