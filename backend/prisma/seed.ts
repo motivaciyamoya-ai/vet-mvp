@@ -1,6 +1,7 @@
 import { ListingType, PrismaClient, UserRole, VerificationStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+import { seedForumHundredThreads } from './forum-hundred.seed';
 import { seedDosageDrugsFromBuiltinCatalog } from '../src/dosage-drugs/dosage-drugs-builtin.seed';
 import { DOSAGE_ANIMAL_KEYS, DRUG_REFERENCE } from './vendor/vetDosageReference';
 
@@ -1541,6 +1542,12 @@ async function main() {
     },
   });
 
+  await seedForumHundredThreads(prisma, {
+    passwordHash: hash,
+    ruCountryId: ru.id,
+    vetTitleId,
+  });
+
   const configuredCountryDemoTotal = countryUserCounts.reduce((s, x) => s + x.count, 0);
   console.log('Seed OK. Пароль для всех демо-пользователей: Demo123!');
   console.log('  vet@vetmvp.local — ADMIN (основной демо-вход + админ-панель)');
@@ -1550,6 +1557,7 @@ async function main() {
   console.log(
     `  country demos: в БД ${countrySeedEmails.length} акка. (конфиг ${configuredCountryDemoTotal}, см. лог блока Seed [country demos] по странам). Повторный seed из backend: npm run seed`,
   );
+  console.log('  forumcolleague01@…forumcolleague40@vetmvp.local — авторы 100 SEO-тем форума (тот же пароль Demo123!)');
 }
 
 main()
