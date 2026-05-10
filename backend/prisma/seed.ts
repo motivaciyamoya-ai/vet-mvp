@@ -2,6 +2,7 @@ import { ListingType, PrismaClient, UserRole, VerificationStatus } from '@prisma
 import * as bcrypt from 'bcrypt';
 
 import { seedForumHundredThreads } from './forum-hundred.seed';
+import { seedArticlesHundred } from './articles-hundred.seed';
 import { seedDosageDrugsFromBuiltinCatalog } from '../src/dosage-drugs/dosage-drugs-builtin.seed';
 import { DOSAGE_ANIMAL_KEYS, DRUG_REFERENCE } from './vendor/vetDosageReference';
 
@@ -1352,6 +1353,12 @@ async function main() {
       });
     }
   }
+
+  await seedArticlesHundred(prisma, {
+    passwordHash: hash,
+    ruCountryId: ru.id,
+    vetTitleId,
+  });
 
   const forumCatSlugsForFill = [
     'therapy',

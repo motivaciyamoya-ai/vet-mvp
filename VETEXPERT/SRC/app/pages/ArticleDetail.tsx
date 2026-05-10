@@ -14,6 +14,7 @@ import {
   type DemoArticle,
 } from "../../lib/demoArticles";
 import { articleCoverForId } from "../../lib/articleCovers";
+import { ArticleMarkdownLite } from "../../lib/articleBodyRich";
 
 type ApiArticle = {
   id: string;
@@ -274,7 +275,7 @@ export default function ArticleDetail() {
           <p className="text-lg text-gray-700 leading-relaxed border-l-4 border-emerald-400 pl-4 bg-emerald-50/40 py-3 rounded-r-lg">
             {a.excerpt}
           </p>
-          <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">{a.body}</div>
+          <ArticleMarkdownLite text={a.body} />
         </div>
 
         <ArticleCommentsSection articleId={a.id} />
