@@ -9,7 +9,6 @@ import {
   Inbox,
   LogIn,
   LogOut,
-  Mail,
   Menu,
   MessageSquare,
   ShoppingBag,
@@ -320,25 +319,6 @@ function RootContent() {
                       <User className="w-[18px] h-[18px] 2xl:w-5 2xl:h-5" aria-hidden />
                     </NavLink>
 
-                    {user?.role === "ADMIN" ? (
-                      <NavLink
-                        to="/admin/mail"
-                        title="Почта и SMTP (админка)"
-                        aria-label="Почта и SMTP"
-                        className={({ isActive }) =>
-                          [
-                            "flex shrink-0 items-center gap-1 px-2 py-1.5 2xl:px-3 rounded-lg font-bold text-xs 2xl:text-sm whitespace-nowrap border border-amber-600/40",
-                            isActive
-                              ? "bg-amber-300 text-amber-950"
-                              : "bg-amber-400 text-amber-950 hover:bg-amber-300",
-                          ].join(" ")
-                        }
-                      >
-                        <Mail className="w-4 h-4 2xl:w-5 2xl:h-5 shrink-0" aria-hidden />
-                        <span className="hidden lg:inline">Почта</span>
-                      </NavLink>
-                    ) : null}
-
                     <button
                       type="button"
                       onClick={() => setNotificationPanelOpen(true)}
@@ -443,16 +423,6 @@ function RootContent() {
                         <Coins className="w-5 h-5" />
                         {balance.toLocaleString()} {currencyDisplayName}
                       </NavLink>
-                      {user?.role === "ADMIN" ? (
-                        <NavLink
-                          to="/admin/mail"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-400 text-amber-950 font-bold border border-amber-500/50"
-                        >
-                          <Mail className="w-5 h-5" />
-                          Почта и SMTP (админ)
-                        </NavLink>
-                      ) : null}
                       <button
                         type="button"
                         onClick={() => {

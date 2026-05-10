@@ -86,6 +86,8 @@ export default function RecentArticles({ limit }: { limit?: number }) {
                     <img
                       src={articleCoverForId(article.id)}
                       alt={article.title}
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute top-3 left-3 flex flex-wrap gap-2">
@@ -120,6 +122,8 @@ export default function RecentArticles({ limit }: { limit?: number }) {
                             <img
                               src={assetUrl(article.author.profile.avatarUrl)}
                               alt=""
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -160,6 +164,8 @@ export default function RecentArticles({ limit }: { limit?: number }) {
                     <img
                       src={article.image}
                       alt={article.title}
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute top-3 left-3">

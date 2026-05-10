@@ -179,7 +179,7 @@ export default function Articles() {
       ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4 lg:gap-6 xl:gap-8">
-        {cards.map((article) => (
+        {cards.map((article, index) => (
           <Link
             key={article.id}
             to={`/articles/${article.id}`}
@@ -189,6 +189,8 @@ export default function Articles() {
               <img
                 src={article.imageUrl}
                 alt={article.title}
+                loading={index === 0 ? 'eager' : 'lazy'}
+                decoding="async"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
               {fromApi === true && (
@@ -229,6 +231,8 @@ export default function Articles() {
                       <img
                         src={assetUrl(article.authorAvatarUrl)}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                     ) : (

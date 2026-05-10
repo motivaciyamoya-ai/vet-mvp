@@ -162,7 +162,7 @@ export default function Marketplace({ limit }: { limit?: number }) {
             В этой категории объявлений пока нет.
           </p>
         ) : null}
-        {displayCards.map((item) => {
+        {displayCards.map((item, index) => {
           const config = typeConfig[item.uiType];
           const Icon = config.icon;
 
@@ -180,6 +180,8 @@ export default function Marketplace({ limit }: { limit?: number }) {
                   <img
                     src={item.image}
                     alt={item.title}
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
 
