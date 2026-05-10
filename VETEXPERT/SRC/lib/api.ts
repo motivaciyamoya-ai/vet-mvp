@@ -186,9 +186,8 @@ function extractApiErrorMessage(res: Response, text: string): string {
     return "Сервер временно недоступен (502/503/504). Обновите страницу через несколько секунд.";
   }
 
-  // Nest обычно отвечает JSON вида { message, statusCode }.
   try {
-    const parsed = JSON.parse(raw) as { message?: string | string[] };
+    const parsed = JSON.parse(raw) as { message?: unknown };
     if (typeof parsed?.message === "string") {
       if (res.status === 403 && parsed.message === "TOTP_REQUIRED") return "TOTP_REQUIRED";
       return parsed.message;
@@ -642,6 +641,67 @@ export async function apiAdminLiveTraffic(windowSec = 300) {
   return apiFetch<AdminLiveTrafficSnapshot>(`/api/admin/analytics/live-traffic?${sp.toString()}`);
 }
 
+export type AdminLiveTrafficHistoryRange = "day" | "week" | "month" | "3m";
+
+export type AdminLiveTrafficHistoryPoint = {
+  at: string;
+  totalHits: number;
+  humanHits: number;
+  botHits: number;
+  uniqueHumanIps: number;
+  uniqueBotIps: number;
+};
+
+export type AdminLiveTrafficHistory = {
+  range: AdminLiveTrafficHistoryRange;
+  bucket: "minute" | "hour" | "day";
+  generatedAt: string;
+  points: AdminLiveTrafficHistoryPoint[];
+};
+
+export type AdminLiveTrafficSummary = {
+  range: AdminLiveTrafficHistoryRange;
+  generatedAt: string;
+  totalHits: number;
+  humanHits: number;
+  botHits: number;
+  humanSharePct: number;
+  botSharePct: number;
+};
+
+export type AdminLiveTrafficTopPathRow = {
+  path: string;
+  hits: number;
+  humanHits: number;
+  botHits: number;
+};
+
+export type AdminLiveTrafficTopPaths = {
+  range: AdminLiveTrafficHistoryRange;
+  generatedAt: string;
+  limit: number;
+  rows: AdminLiveTrafficTopPathRow[];
+};
+
+export async function apiAdminLiveTrafficHistory(range: AdminLiveTrafficHistoryRange) {
+  const sp = new URLSearchParams();
+  sp.set("range", range);
+  return apiFetch<AdminLiveTrafficHistory>(`/api/admin/analytics/live-traffic/history?${sp.toString()}`);
+}
+
+export async function apiAdminLiveTrafficSummary(range: AdminLiveTrafficHistoryRange) {
+  const sp = new URLSearchParams();
+  sp.set("range", range);
+  return apiFetch<AdminLiveTrafficSummary>(`/api/admin/analytics/live-traffic/summary?${sp.toString()}`);
+}
+
+export async function apiAdminLiveTrafficTopPaths(range: AdminLiveTrafficHistoryRange, limit = 20) {
+  const sp = new URLSearchParams();
+  sp.set("range", range);
+  sp.set("limit", String(limit));
+  return apiFetch<AdminLiveTrafficTopPaths>(`/api/admin/analytics/live-traffic/top?${sp.toString()}`);
+}
+
 export type MedicalAnalyzerKind = "anamnesis" | "imaging";
 
 export type MedicalAnalyzerResultDto = {
@@ -653,7 +713,40 @@ export type MedicalAnalyzerResultDto = {
   additionalTests: string[];
   notesForDoctor: string[];
   disclaimer: string;
+  /** Поля ответа POST /api/ai/medical-analyzer (run), опционально для обратной совместимости. */
+  analysisId?: string;
+  charged?: boolean;
+  cost?: number;
+  balanceAfter?: number;
+  status?: "SUCCESS" | "EMPTY";
 };
+
+export type MedicalAnalyzerPricingDto = {
+  cost: number;
+  currencyDisplayName: string;
+};
+
+export async function apiMedicalAnalyzerPricing() {
+  return apiFetch<MedicalAnalyzerPricingDto>("/api/ai/medical-analyzer/pricing");
+}
+
+export type MedicalAnalyzerHistoryRowDto = {
+  id: string;
+  kind: MedicalAnalyzerKind;
+  createdAt: string;
+  status: "SUCCESS" | "EMPTY" | "ERROR";
+  charged: boolean;
+  cost: number;
+  provider: string;
+  model: string;
+  imagesCount: number;
+  errorMessage: string | null;
+  result: MedicalAnalyzerResultDto | null;
+};
+
+export async function apiMedicalAnalyzerHistory() {
+  return apiFetch<MedicalAnalyzerHistoryRowDto[]>("/api/ai/medical-analyzer/history");
+}
 
 export async function apiMedicalAnalyzerAnalyze(input: {
   kind: MedicalAnalyzerKind;
