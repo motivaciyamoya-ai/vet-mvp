@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { ArticleModerationStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 
@@ -58,7 +58,13 @@ export class ProfilesService {
         where: { authorId: viewedUserId, acceptedAsSolutionIn: { isNot: null } },
       }),
       this.prisma.profileThank.count({ where: { toUserId: viewedUserId } }),
-      this.prisma.article.count({ where: { authorId: viewedUserId, published: true } }),
+      this.prisma.article.count({
+        where: {
+          authorId: viewedUserId,
+          published: true,
+          moderationStatus: { in: [ArticleModerationStatus.NONE, ArticleModerationStatus.APPROVED] },
+        },
+      }),
     ]);
 
     return {

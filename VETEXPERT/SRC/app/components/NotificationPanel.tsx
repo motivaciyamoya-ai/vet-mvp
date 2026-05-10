@@ -13,6 +13,7 @@ import {
   ThumbsUp,
   MessageSquare,
   BookOpen,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { useNotifications } from "../contexts/NotificationContext";
@@ -115,6 +116,11 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
       onClose();
       return;
     }
+    if (notification.type === "article_pending") {
+      navigate("/admin/articles?moderation=PENDING");
+      onClose();
+      return;
+    }
     if (notification.type === "listing_message" && notification.listingId) {
       navigate(`/marketplace/${encodeURIComponent(notification.listingId)}`);
       onClose();
@@ -144,6 +150,9 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
     }
     if (notification.type === "article_comment") {
       return <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-white" aria-hidden />;
+    }
+    if (notification.type === "article_pending") {
+      return <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" aria-hidden />;
     }
     if (notification.type === "listing_message") {
       return <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white" aria-hidden />;
@@ -224,6 +233,7 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
                 const isThank = notification.type === "profile_thank";
                 const isForumReply = notification.type === "forum_reply";
                 const isArticleComment = notification.type === "article_comment";
+                const isArticlePending = notification.type === "article_pending";
                 const isListingMessage = notification.type === "listing_message";
                 const iconGradient =
                   notification.type === "pick_solution"
@@ -238,6 +248,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
                             ? "from-teal-500 to-emerald-600"
                             : isArticleComment
                               ? "from-indigo-500 to-blue-700"
+                              : isArticlePending
+                                ? "from-violet-600 to-fuchsia-700"
                               : isListingMessage
                                 ? "from-emerald-500 to-teal-700"
                               : urgencyConfig.color;
@@ -295,6 +307,11 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
                             {isArticleComment && (
                               <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-200">
                                 Статья
+                              </span>
+                            )}
+                            {isArticlePending && (
+                              <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-900 border border-violet-200">
+                                Модерация
                               </span>
                             )}
                             {!notification.read && (

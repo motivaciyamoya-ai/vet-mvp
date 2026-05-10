@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, UserRole } from '@prisma/client';
+import { ArticleModerationStatus, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { SpecialistsListQueryDto } from './dto/specialists-query.dto';
 import type { PublicSiteSeoDto } from './dto/public-site-seo.dto';
@@ -402,7 +402,10 @@ export class ReferenceService {
         take: 2500,
       }),
       this.prisma.article.findMany({
-        where: { published: true },
+        where: {
+          published: true,
+          moderationStatus: { in: [ArticleModerationStatus.NONE, ArticleModerationStatus.APPROVED] },
+        },
         select: { id: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
         take: 4000,

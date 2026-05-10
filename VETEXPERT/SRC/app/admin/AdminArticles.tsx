@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { apiFetch } from "../../lib/api";
+import { useSearchParams } from "react-router";
+import { Paperclip, X } from "lucide-react";
+import {
+  apiAttachmentsPolicy,
+  apiFetch,
+  apiUploadMessageAttachment,
+  type AttachmentsPolicyDto,
+} from "../../lib/api";
+import CommentAttachmentsGallery from "../components/CommentAttachmentsGallery";
 
 const ART_EMOJI = ["📄", "💊", "🔬", "🐾", "📰", "⚕️", "🧬", "❤️", "🦷", "🌿"];
 
@@ -15,10 +23,15 @@ type Article = {
   id: string;
   title: string;
   excerpt: string;
+  body: string;
   published: boolean;
+  moderationStatus: string;
+  attachmentUrls?: string[];
+  categoryId?: string;
   createdAt: string;
-  category: { name: string };
+  category: { id: string; name: string };
   author: {
+    id: string;
     email: string;
     profile?: { displayName?: string | null } | null;
   };
@@ -28,14 +41,16 @@ function CatEditModal({
   title,
   children,
   onClose,
+  wide,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  wide?: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
-      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-5">
+      <div className={`bg-white rounded-2xl shadow-xl w-full p-5 ${wide ? "max-w-3xl" : "max-w-lg"}`}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-semibold text-lg">{title}</h2>
           <button type="button" className="text-slate-500 text-2xl leading-none px-2" onClick={onClose}>
@@ -49,6 +64,8 @@ function CatEditModal({
 }
 
 export default function AdminArticles() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modFilter = (searchParams.get("moderation") ?? "ALL").toUpperCase();
   const [cats, setCats] = useState<ACat[]>([]);
   const [articles, setArticles] = useState<{ items: Article[]; total: number } | null>(null);
   const [newCat, setNewCat] = useState({ name: "", slug: "", iconEmoji: "📄", sortOrder: 0 });
@@ -63,21 +80,125 @@ export default function AdminArticles() {
     published: true,
   });
   const [err, setErr] = useState("");
+  const [editArt, setEditArt] = useState<Article | null>(null);
+  const [editForm, setEditForm] = useState({
+    categoryId: "",
+    authorId: "",
+    title: "",
+    excerpt: "",
+    body: "",
+    published: true,
+    moderationStatus: "NONE",
+    attachmentUrls: [] as string[],
+  });
+  const [attachPolicy, setAttachPolicy] = useState<AttachmentsPolicyDto | null>(null);
+  const [editUploading, setEditUploading] = useState(false);
 
   const loadCats = useCallback(() => {
     apiFetch<ACat[]>("/api/admin/articles/categories").then(setCats).catch((e) => setErr(String(e.message)));
   }, []);
 
   const loadArticles = useCallback(() => {
-    apiFetch<{ items: Article[]; total: number }>("/api/admin/articles?page=1&pageSize=100")
+    const sp = new URLSearchParams();
+    sp.set("page", "1");
+    sp.set("pageSize", "100");
+    if (modFilter && modFilter !== "ALL") sp.set("moderation", modFilter);
+    apiFetch<{ items: Article[]; total: number }>(`/api/admin/articles?${sp.toString()}`)
       .then(setArticles)
       .catch((e) => setErr(String(e.message)));
-  }, []);
+  }, [modFilter]);
 
   useEffect(() => {
     loadCats();
+  }, [loadCats]);
+
+  useEffect(() => {
     loadArticles();
-  }, [loadCats, loadArticles]);
+  }, [loadArticles]);
+
+  useEffect(() => {
+    apiAttachmentsPolicy()
+      .then(setAttachPolicy)
+      .catch(() =>
+        setAttachPolicy({
+          messagesEnabled: true,
+          maxMb: 12,
+          maxFilesPerComment: 5,
+          forumMaxAttachmentLines: 10,
+          allowedMimeTypes: [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif",
+            "text/plain",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          ],
+        }),
+      );
+  }, []);
+
+  const openEdit = (a: Article) => {
+    setEditArt(a);
+    setEditForm({
+      categoryId: a.category.id,
+      authorId: a.author.id,
+      title: a.title,
+      excerpt: a.excerpt,
+      body: a.body ?? "",
+      published: a.published,
+      moderationStatus: a.moderationStatus ?? "NONE",
+      attachmentUrls: [...(a.attachmentUrls ?? [])],
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editArt) return;
+    try {
+      await apiFetch(`/api/admin/articles/${editArt.id}`, {
+        method: "PATCH",
+        json: {
+          categoryId: editForm.categoryId,
+          authorId: editForm.authorId,
+          title: editForm.title,
+          excerpt: editForm.excerpt,
+          body: editForm.body,
+          published: editForm.published,
+          moderationStatus: editForm.moderationStatus,
+          attachmentUrls: editForm.attachmentUrls,
+        },
+      });
+      setEditArt(null);
+      loadArticles();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
+
+  const approveArticle = async (id: string) => {
+    try {
+      await apiFetch(`/api/admin/articles/${id}`, {
+        method: "PATCH",
+        json: { published: true, moderationStatus: "APPROVED" },
+      });
+      loadArticles();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
+
+  const rejectArticle = async (id: string) => {
+    if (!confirm("Отклонить заявку? Статья останется неопубликованной.")) return;
+    try {
+      await apiFetch(`/api/admin/articles/${id}`, {
+        method: "PATCH",
+        json: { published: false, moderationStatus: "REJECTED" },
+      });
+      loadArticles();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
 
   const addCat = async () => {
     try {
@@ -181,10 +302,33 @@ export default function AdminArticles() {
     }
   };
 
+  const setMod = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (!v || v === "ALL") next.delete("moderation");
+    else next.set("moderation", v);
+    setSearchParams(next, { replace: true });
+  };
+
   return (
     <div className="space-y-10">
       <h1 className="text-2xl font-bold">Статьи</h1>
       {err && <p className="text-red-600">{err}</p>}
+
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-sm text-slate-600 mr-2">Очередь:</span>
+        {(["ALL", "PENDING", "APPROVED", "REJECTED", "NONE"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setMod(v)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+              modFilter === v ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {v === "ALL" ? "Все" : v === "PENDING" ? "На модерации" : v === "APPROVED" ? "Одобрено" : v === "REJECTED" ? "Отклонено" : "Штат"}
+          </button>
+        ))}
+      </div>
 
       <section>
         <h2 className="text-lg font-semibold mb-2">Категории</h2>
@@ -386,7 +530,8 @@ export default function AdminArticles() {
                   <th className="text-left p-3">Заголовок</th>
                   <th className="text-left p-3">Категория</th>
                   <th className="text-left p-3">Автор</th>
-                  <th className="text-left p-3">Статус</th>
+                  <th className="text-left p-3">Модерация</th>
+                  <th className="text-left p-3">Сайт</th>
                   <th className="text-right p-3"></th>
                 </tr>
               </thead>
@@ -401,16 +546,38 @@ export default function AdminArticles() {
                       </div>
                       <div className="font-mono text-xs text-slate-500">{a.author.email}</div>
                     </td>
+                    <td className="p-3 font-mono text-xs">{a.moderationStatus}</td>
                     <td className="p-3">{a.published ? "Да" : "Нет"}</td>
-                    <td className="p-3 text-right space-x-2">
+                    <td className="p-3 text-right flex flex-wrap justify-end gap-x-2 gap-y-1">
+                      <button type="button" className="text-emerald-700 underline text-sm" onClick={() => openEdit(a)}>
+                        Правка
+                      </button>
+                      {a.moderationStatus === "PENDING" ? (
+                        <>
+                          <button
+                            type="button"
+                            className="text-emerald-800 underline text-sm font-semibold"
+                            onClick={() => void approveArticle(a.id)}
+                          >
+                            Одобрить
+                          </button>
+                          <button
+                            type="button"
+                            className="text-amber-800 underline text-sm"
+                            onClick={() => void rejectArticle(a.id)}
+                          >
+                            Отклонить
+                          </button>
+                        </>
+                      ) : null}
                       <button
                         type="button"
-                        className="text-emerald-700 underline"
+                        className="text-slate-600 underline text-sm"
                         onClick={() => togglePublish(a.id, a.published)}
                       >
                         {a.published ? "Скрыть" : "Опубликовать"}
                       </button>
-                      <button type="button" className="text-red-600 underline" onClick={() => delArticle(a.id)}>
+                      <button type="button" className="text-red-600 underline text-sm" onClick={() => delArticle(a.id)}>
                         Удалить
                       </button>
                     </td>
@@ -421,6 +588,131 @@ export default function AdminArticles() {
           </div>
         )}
       </section>
+
+      {editArt && (
+        <CatEditModal title="Редактирование статьи" wide onClose={() => setEditArt(null)}>
+          <div className="space-y-3 max-h-[80vh] overflow-y-auto pr-1">
+            <label className="text-xs text-slate-500">Автор (user id)</label>
+            <input
+              className="w-full border rounded-lg px-3 py-2 font-mono text-xs"
+              value={editForm.authorId}
+              onChange={(e) => setEditForm((f) => ({ ...f, authorId: e.target.value }))}
+            />
+            <label className="text-xs text-slate-500">Категория</label>
+            <select
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={editForm.categoryId}
+              onChange={(e) => setEditForm((f) => ({ ...f, categoryId: e.target.value }))}
+            >
+              {cats.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <label className="text-xs text-slate-500">Заголовок</label>
+            <input
+              className="w-full border rounded-lg px-3 py-2"
+              value={editForm.title}
+              onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+            />
+            <label className="text-xs text-slate-500">Краткое описание</label>
+            <input
+              className="w-full border rounded-lg px-3 py-2"
+              value={editForm.excerpt}
+              onChange={(e) => setEditForm((f) => ({ ...f, excerpt: e.target.value }))}
+            />
+            <label className="text-xs text-slate-500">Текст</label>
+            <textarea
+              className="w-full border rounded-lg px-3 py-2 font-mono text-xs min-h-[200px]"
+              value={editForm.body}
+              onChange={(e) => setEditForm((f) => ({ ...f, body: e.target.value }))}
+            />
+            <label className="text-xs text-slate-500">Модерация</label>
+            <select
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={editForm.moderationStatus}
+              onChange={(e) => setEditForm((f) => ({ ...f, moderationStatus: e.target.value }))}
+            >
+              {["NONE", "PENDING", "APPROVED", "REJECTED"].map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editForm.published}
+                onChange={(e) => setEditForm((f) => ({ ...f, published: e.target.checked }))}
+              />
+              Опубликовано на сайте
+            </label>
+            {attachPolicy?.messagesEnabled ? (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-600">Вложения (до 15)</p>
+                <div className="flex flex-wrap gap-2">
+                  {editForm.attachmentUrls.map((url) => (
+                    <span
+                      key={url}
+                      className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50/80 px-2 py-1 text-xs max-w-[200px]"
+                    >
+                      <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{url.split("/").pop()}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 text-gray-500 hover:text-red-600"
+                        onClick={() => setEditForm((f) => ({ ...f, attachmentUrls: f.attachmentUrls.filter((u) => u !== url) }))}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                  {editForm.attachmentUrls.length < 15 && (
+                    <label className="inline-flex items-center gap-1 rounded-lg border border-dashed border-gray-300 px-2 py-1 text-xs cursor-pointer hover:bg-gray-50">
+                      + файл
+                      <input
+                        type="file"
+                        className="sr-only"
+                        accept={attachPolicy.allowedMimeTypes.join(",")}
+                        disabled={editUploading}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (!f) return;
+                          setEditUploading(true);
+                          void (async () => {
+                            try {
+                              const { url } = await apiUploadMessageAttachment(f);
+                              setEditForm((prev) => ({
+                                ...prev,
+                                attachmentUrls: prev.attachmentUrls.length >= 15 ? prev.attachmentUrls : [...prev.attachmentUrls, url],
+                              }));
+                            } catch (ex) {
+                              alert(ex instanceof Error ? ex.message : "Ошибка загрузки");
+                            } finally {
+                              setEditUploading(false);
+                            }
+                          })();
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+                {editForm.attachmentUrls.length > 0 ? <CommentAttachmentsGallery urls={editForm.attachmentUrls} /> : null}
+              </div>
+            ) : null}
+            <div className="flex gap-2 pt-2 sticky bottom-0 bg-white pb-1">
+              <button type="button" className="bg-emerald-600 text-white px-4 py-2 rounded-lg" onClick={() => void saveEdit()}>
+                Сохранить
+              </button>
+              <button type="button" className="border px-4 py-2 rounded-lg" onClick={() => setEditArt(null)}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </CatEditModal>
+      )}
     </div>
   );
 }

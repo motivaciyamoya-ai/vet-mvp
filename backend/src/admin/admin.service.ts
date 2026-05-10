@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ListingType, Prisma, SosStatus, UserRole } from '@prisma/client';
+import { ArticleModerationStatus, ListingType, Prisma, SosStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { VetcoinService } from '../vetcoin/vetcoin.service';
@@ -33,6 +33,7 @@ import { AdminPatchUserDto } from './dto/admin-users.dto';
 import { AdminSetUserVetcoinDto } from './dto/admin-users-vetcoin.dto';
 import { AdminPatchReportDto } from './dto/admin-misc.dto';
 import { ModerationService } from '../moderation/moderation.service';
+import { sanitizeArticleSubmissionAttachmentUrls } from '../uploads/message-attachments.policy';
 import { AuditService } from '../audit/audit.service';
 import { AlertsService } from '../alerts/alerts.service';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
@@ -442,9 +443,13 @@ export class AdminService {
     return { ok: true };
   }
 
-  async articlesList(q?: string, page = 1, pageSize = 20) {
+  async articlesList(q?: string, page = 1, pageSize = 20, moderation?: string) {
     const { skip, take, page: p, pageSize: ps } = this.paginate(page, pageSize);
     const where: Prisma.ArticleWhereInput = {};
+    const m = (moderation ?? '').trim().toUpperCase();
+    if (m && m !== 'ALL' && (Object.values(ArticleModerationStatus) as string[]).includes(m)) {
+      where.moderationStatus = m as ArticleModerationStatus;
+    }
     if (q && q.trim().length >= 2) {
       const needle = q.trim();
       where.OR = [
@@ -473,13 +478,18 @@ export class AdminService {
     if (!author) throw new NotFoundException('Автор не найден');
     const cat = await this.prisma.articleCategory.findUnique({ where: { id: dto.categoryId } });
     if (!cat) throw new NotFoundException('Категория не найдена');
+    const attachmentUrls = sanitizeArticleSubmissionAttachmentUrls(dto.attachmentUrls ?? [], 15);
+    const published = dto.published ?? true;
+    const moderationStatus = dto.moderationStatus ?? ArticleModerationStatus.NONE;
     return this.prisma.article.create({
       data: {
         categoryId: dto.categoryId,
         title: dto.title,
         excerpt: dto.excerpt,
         body: dto.body,
-        published: dto.published ?? true,
+        published,
+        moderationStatus,
+        attachmentUrls,
         authorId: dto.authorId,
       },
       include: { category: true, author: { select: { id: true, email: true } } },
@@ -497,6 +507,19 @@ export class AdminService {
       const c = await this.prisma.articleCategory.findUnique({ where: { id: dto.categoryId } });
       if (!c) throw new NotFoundException('Категория не найдена');
     }
+    let moderationStatus = dto.moderationStatus;
+    if (dto.published === true && dto.moderationStatus === undefined) {
+      if (
+        a.moderationStatus === ArticleModerationStatus.PENDING ||
+        a.moderationStatus === ArticleModerationStatus.REJECTED
+      ) {
+        moderationStatus = ArticleModerationStatus.APPROVED;
+      }
+    }
+    const attachmentUrls =
+      dto.attachmentUrls !== undefined
+        ? sanitizeArticleSubmissionAttachmentUrls(dto.attachmentUrls, 15)
+        : undefined;
     return this.prisma.article.update({
       where: { id },
       data: {
@@ -506,6 +529,8 @@ export class AdminService {
         ...(dto.excerpt !== undefined ? { excerpt: dto.excerpt } : {}),
         ...(dto.body !== undefined ? { body: dto.body } : {}),
         ...(dto.published !== undefined ? { published: dto.published } : {}),
+        ...(moderationStatus !== undefined ? { moderationStatus } : {}),
+        ...(attachmentUrls !== undefined ? { attachmentUrls } : {}),
       },
       include: {
         category: true,

@@ -39,6 +39,14 @@ enum ListingType {
   SELL
 }
 
+/// Модерация публикаций статей: PENDING — на проверке у админа; NONE — создано штатно (сид/админ).
+enum ArticleModerationStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum SosStatus {
   OPEN
   IN_PROGRESS
@@ -555,10 +563,15 @@ model Article {
   excerpt    String
   body       String
   published  Boolean         @default(true)
+  /// Вложения к заявке на публикацию (URL из /uploads/messages/…).
+  attachmentUrls String[]  @default([])
+  moderationStatus ArticleModerationStatus @default(NONE)
   createdAt  DateTime        @default(now())
   comments   ArticleComment[]
   reports    Report[]
   commentNotifications UserNotification[] @relation("ArticleCommentNotification")
+
+  @@index([moderationStatus, published])
 }
 
 model ArticleComment {
@@ -568,7 +581,9 @@ model ArticleComment {
   authorId  String
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body      String   @db.Text
+  attachmentUrls String[] @default([])
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   reports   Report[]
 
   @@index([articleId])

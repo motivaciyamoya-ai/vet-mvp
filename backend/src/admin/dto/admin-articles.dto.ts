@@ -1,6 +1,19 @@
+import { ArticleModerationStatus } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 export class AdminCreateArticleCategoryDto {
   @ApiProperty()
   @IsString()
@@ -75,6 +88,18 @@ export class AdminCreateArticleDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiPropertyOptional({ enum: ArticleModerationStatus })
+  @IsOptional()
+  @IsEnum(ArticleModerationStatus)
+  moderationStatus?: ArticleModerationStatus;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(15)
+  @IsString({ each: true })
+  attachmentUrls?: string[];
 }
 
 export class AdminPatchArticleDto {
@@ -113,5 +138,46 @@ export class AdminPatchArticleDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiPropertyOptional({ enum: ArticleModerationStatus })
+  @IsOptional()
+  @IsEnum(ArticleModerationStatus)
+  moderationStatus?: ArticleModerationStatus;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(15)
+  @IsString({ each: true })
+  attachmentUrls?: string[];
 }
 
+export class AdminArticlesListQueryDto {
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  q?: string;
+
+  @ApiPropertyOptional({
+    description: 'Фильтр модерации: PENDING | APPROVED | REJECTED | NONE | ALL',
+  })
+  @IsOptional()
+  @IsString()
+  moderation?: string;
+}

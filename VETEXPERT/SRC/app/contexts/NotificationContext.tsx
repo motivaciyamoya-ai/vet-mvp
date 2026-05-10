@@ -20,6 +20,7 @@ export type NotificationType =
   | "profile_thank"
   | "forum_reply"
   | "article_comment"
+  | "article_pending"
   | "listing_message";
 
 export interface Notification {
@@ -84,6 +85,7 @@ function serverTypeToClient(raw: string): NotificationType {
   if (raw === "PROFILE_THANK_RECEIVED") return "profile_thank";
   if (raw === "FORUM_THREAD_REPLY") return "forum_reply";
   if (raw === "ARTICLE_COMMENT") return "article_comment";
+  if (raw === "ARTICLE_PENDING") return "article_pending";
   if (raw === "LISTING_MESSAGE") return "listing_message";
   return "system";
 }

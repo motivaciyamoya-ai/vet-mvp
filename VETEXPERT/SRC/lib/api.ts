@@ -395,7 +395,9 @@ export async function apiArticlesList(params?: { q?: string; categorySlug?: stri
 export type ArticleCommentDto = {
   id: string;
   body: string;
+  attachmentUrls: string[];
   createdAt: string;
+  updatedAt: string;
   author: ArticleListAuthor;
   authorModeration?: PublicModerationDto;
 };
@@ -414,6 +416,72 @@ export async function apiPostArticleComment(
     method: "POST",
     json: payload,
   });
+}
+
+export async function apiPatchArticleComment(
+  commentId: string,
+  payload: { body?: string; attachmentUrls?: string[] },
+) {
+  return apiFetch<ArticleCommentDto>(`/api/articles/comment/${encodeURIComponent(commentId)}`, {
+    method: "PATCH",
+    json: payload,
+  });
+}
+
+export async function apiDeleteArticleComment(commentId: string) {
+  return apiFetch<{ ok: boolean }>(`/api/articles/comment/${encodeURIComponent(commentId)}`, {
+    method: "DELETE",
+  });
+}
+
+export type ArticleDetailDto = ArticleListItem & {
+  body: string;
+  attachmentUrls?: string[];
+  moderationStatus?: string;
+  published?: boolean;
+  author: ArticleListAuthor & {
+    profile?: ArticleListAuthor["profile"] & {
+      country?: { nameRu: string };
+      jobTitle?: { nameRu: string };
+    };
+  };
+};
+
+export async function apiArticleSubmit(payload: {
+  categoryId: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  attachmentUrls?: string[];
+}) {
+  return apiFetch<ArticleDetailDto>("/api/articles/submit", { method: "POST", json: payload });
+}
+
+export async function apiArticlePatchPending(
+  articleId: string,
+  payload: {
+    categoryId?: string;
+    title?: string;
+    excerpt?: string;
+    body?: string;
+    attachmentUrls?: string[];
+  },
+) {
+  return apiFetch<ArticleDetailDto>(`/api/articles/submit/${encodeURIComponent(articleId)}`, {
+    method: "PATCH",
+    json: payload,
+  });
+}
+
+export async function apiArticlePreview(articleId: string) {
+  return apiFetch<ArticleDetailDto>(`/api/articles/preview/${encodeURIComponent(articleId)}`);
+}
+
+export async function apiArticlesMine(status: "pending" | "all" = "pending") {
+  const sp = new URLSearchParams();
+  if (status === "all") sp.set("status", "all");
+  const q = sp.toString();
+  return apiFetch<ArticleDetailDto[]>(`/api/articles/mine${q ? `?${q}` : ""}`);
 }
 
 /** Главная страница: последний автор ответа, отмеченного автором темы как решение */

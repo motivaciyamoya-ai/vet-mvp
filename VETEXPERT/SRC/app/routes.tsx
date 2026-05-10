@@ -44,6 +44,7 @@ const AdminLegal = lazy(() => import("./admin/AdminLegal"));
 const UserPublicProfile = lazy(() => import("./pages/UserPublicProfile"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const ArticleDetail = lazy(() => import("./pages/ArticleDetail"));
+const ArticleSubmit = lazy(() => import("./pages/ArticleSubmit"));
 const MarketplaceListingDetail = lazy(() => import("./pages/MarketplaceListingDetail"));
 const EventsPage = lazy(() => import("./pages/EventsPage"));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage"));
@@ -137,6 +138,7 @@ export const router = createBrowserRouter([
           { path: "forum/category/:slug", Component: ForumCategoryPage },
           { path: "forum/topic/:id", Component: ForumTopicDetail },
           { path: "articles", Component: Articles },
+          { path: "articles/submit", Component: ArticleSubmit },
           { path: "articles/:id", Component: ArticleDetail },
           { path: "events", Component: EventsPage },
           { path: "events/:id", Component: EventDetailPage },

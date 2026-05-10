@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -9,6 +9,9 @@ import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorat
 import { ArticlesService } from './articles.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { CreateArticleCommentDto } from './dto/create-article-comment.dto';
+import { PatchArticleCommentDto } from './dto/patch-article-comment.dto';
+import { PatchSubmitArticleDto } from './dto/patch-submit-article.dto';
+import { SubmitArticleDto } from './dto/submit-article.dto';
 
 @ApiTags('articles')
 @Controller('articles')
@@ -20,19 +23,36 @@ export class ArticlesController {
     return this.articles.categories();
   }
 
-  @Get()
-  list(
-    @Query('q') q?: string,
-    @Query('categorySlug') categorySlug?: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, ModerationGuard)
+  @Get('mine')
+  mySubmissions(@CurrentUser() user: AuthUser, @Query('status') status?: 'pending' | 'all') {
+    return this.articles.mySubmissions(user.id, status === 'all' ? 'all' : 'pending');
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, ModerationGuard)
+  @Get('preview/:id')
+  previewById(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.articles.previewById(id, user.id, user.role as UserRole);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, ModerationGuard)
+  @Post('submit')
+  submit(@CurrentUser() user: AuthUser, @Body() dto: SubmitArticleDto) {
+    return this.articles.submitArticle(user.id, user.role as UserRole, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, ModerationGuard)
+  @Patch('submit/:id')
+  patchSubmit(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: PatchSubmitArticleDto,
   ) {
-    return this.articles.list(
-      q,
-      categorySlug,
-      page ? parseInt(page, 10) : 1,
-      pageSize ? parseInt(pageSize, 10) : 20,
-    );
+    return this.articles.patchPendingSubmission(user.id, id, dto);
   }
 
   /**
@@ -55,6 +75,24 @@ export class ArticlesController {
     return this.articles.addComment(articleId, user.id, dto);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, ModerationGuard)
+  @Patch('comment/:commentId')
+  patchArticleComment(
+    @Param('commentId') commentId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: PatchArticleCommentDto,
+  ) {
+    return this.articles.patchComment(commentId, user.id, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, ModerationGuard)
+  @Delete('comment/:commentId')
+  deleteArticleComment(@Param('commentId') commentId: string, @CurrentUser() user: AuthUser) {
+    return this.articles.deleteComment(commentId, user.id);
+  }
+
   /** Совместимость со старым URL */
   @Get(':articleId/comments')
   articleCommentsLegacy(@Param('articleId') articleId: string) {
@@ -70,6 +108,21 @@ export class ArticlesController {
     @Body() dto: CreateArticleCommentDto,
   ) {
     return this.articles.addComment(articleId, user.id, dto);
+  }
+
+  @Get()
+  list(
+    @Query('q') q?: string,
+    @Query('categorySlug') categorySlug?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.articles.list(
+      q,
+      categorySlug,
+      page ? parseInt(page, 10) : 1,
+      pageSize ? parseInt(pageSize, 10) : 20,
+    );
   }
 
   @Get(':id')

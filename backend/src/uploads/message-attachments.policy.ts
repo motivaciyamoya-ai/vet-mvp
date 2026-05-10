@@ -37,3 +37,14 @@ export function sanitizeArticleCommentAttachmentUrls(raw: string[] | undefined, 
     .filter((u) => isMessageAttachmentLine(u))
     .slice(0, cap);
 }
+
+/** Вложения к заявке на статью (до 15 файлов). */
+export function sanitizeArticleSubmissionAttachmentUrls(raw: string[] | undefined, maxFiles: number): string[] {
+  if (!Array.isArray(raw)) return [];
+  const cap = Math.max(1, Math.min(15, maxFiles));
+  return raw
+    .filter((u): u is string => typeof u === 'string')
+    .map((u) => u.trim())
+    .filter((u) => isMessageAttachmentLine(u))
+    .slice(0, cap);
+}

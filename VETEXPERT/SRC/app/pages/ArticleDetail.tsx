@@ -2,7 +2,7 @@ import { ArrowLeft, Clock, User, MapPin, Briefcase } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useEffect, useState } from "react";
 import { applyRoutePageSeo, getCachedSiteSeo, plainTextExcerpt } from "../../lib/documentSeo";
-import { apiFetch, assetUrl } from "../../lib/api";
+import { apiArticlePreview, apiFetch, assetUrl } from "../../lib/api";
 import TranslatedContent from "../components/TranslatedContent";
 import ArticleCommentsSection from "../components/ArticleCommentsSection";
 import OptimizedPicture from "../components/OptimizedPicture";
@@ -15,6 +15,7 @@ import {
 } from "../../lib/demoArticles";
 import { articleCoverForId } from "../../lib/articleCovers";
 import { ArticleMarkdownLite } from "../../lib/articleBodyRich";
+import CommentAttachmentsGallery from "../components/CommentAttachmentsGallery";
 
 type ApiArticle = {
   id: string;
@@ -22,6 +23,9 @@ type ApiArticle = {
   excerpt: string;
   body: string;
   createdAt: string;
+  published?: boolean;
+  moderationStatus?: string;
+  attachmentUrls?: string[];
   category: { name: string; slug: string };
   author: {
     id: string;
@@ -74,6 +78,10 @@ export default function ArticleDetail() {
   useEffect(() => {
     const sid = "ld-json-article-page";
     if (state.status !== "api" && state.status !== "demo") {
+      document.getElementById(sid)?.remove();
+      return;
+    }
+    if (state.status === "api" && state.article.moderationStatus === "PENDING") {
       document.getElementById(sid)?.remove();
       return;
     }
@@ -130,6 +138,15 @@ export default function ArticleDetail() {
         const article = await apiFetch<ApiArticle>(`/api/articles/${encodeURIComponent(id)}`);
         if (!cancelled) setState({ status: "api", article });
       } catch {
+        if (!cancelled && authReady && user) {
+          try {
+            const preview = await apiArticlePreview(id.trim());
+            if (!cancelled) setState({ status: "api", article: preview as ApiArticle });
+            return;
+          } catch {
+            /* демо ниже */
+          }
+        }
         const demo = getDemoArticleByIdParam(id);
         if (!cancelled) {
           if (demo) setState({ status: "demo", article: demo });
@@ -141,7 +158,7 @@ export default function ArticleDetail() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, authReady, user?.id]);
 
   if (state.status === "loading") {
     return (
@@ -187,6 +204,8 @@ export default function ArticleDetail() {
       Number.isFinite(when.getTime()) ? when.toLocaleDateString("ru-RU", { dateStyle: "long" }) : "—";
     const locationLine = [p?.city, p?.country?.nameRu].filter(Boolean).join(", ");
     const cover = articleCoverForId(a.id);
+    const isPendingPreview = a.moderationStatus === "PENDING" || a.published === false;
+    const showComments = !isPendingPreview;
 
     return (
       <article className="max-w-3xl mx-auto space-y-8">
@@ -197,6 +216,16 @@ export default function ArticleDetail() {
           <ArrowLeft className="w-4 h-4" />
           К списку статей
         </Link>
+
+        {a.moderationStatus === "PENDING" ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p className="font-semibold">Черновик на модерации</p>
+            <p className="mt-1 text-amber-900/90">
+              Эта страница видна вам как автору (или администратору). После проверки материал появится в общем
+              каталоге.
+            </p>
+          </div>
+        ) : null}
 
         <div className="rounded-2xl overflow-hidden border border-emerald-100 shadow-lg bg-white">
           <div className="relative h-44 sm:h-56 bg-gray-200">
@@ -275,10 +304,16 @@ export default function ArticleDetail() {
           <p className="text-lg text-gray-700 leading-relaxed border-l-4 border-emerald-400 pl-4 bg-emerald-50/40 py-3 rounded-r-lg">
             {a.excerpt}
           </p>
+          {a.attachmentUrls && a.attachmentUrls.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-800">Вложения</p>
+              <CommentAttachmentsGallery urls={a.attachmentUrls} />
+            </div>
+          ) : null}
           <ArticleMarkdownLite text={a.body} />
         </div>
 
-        <ArticleCommentsSection articleId={a.id} />
+        {showComments ? <ArticleCommentsSection articleId={a.id} /> : null}
       </article>
     );
   }

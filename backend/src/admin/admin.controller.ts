@@ -32,6 +32,7 @@ import {
   AdminPatchForumThreadDto,
 } from './dto/admin-forum.dto';
 import {
+  AdminArticlesListQueryDto,
   AdminCreateArticleCategoryDto,
   AdminCreateArticleDto,
   AdminPatchArticleCategoryDto,
@@ -423,8 +424,8 @@ export class AdminController {
   }
 
   @Get('articles')
-  articles(@Query() q: SearchQueryDto) {
-    return this.admin.articlesList(q.q, q.page, q.pageSize);
+  articles(@Query() q: AdminArticlesListQueryDto) {
+    return this.admin.articlesList(q.q, q.page, q.pageSize, q.moderation);
   }
 
   @Post('articles')

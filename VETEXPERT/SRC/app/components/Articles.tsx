@@ -107,8 +107,12 @@ export default function Articles() {
 
   const onWriteArticleClick = () => {
     const r = user?.role?.toUpperCase();
-    if (r === "ADMIN" || r === "MODERATOR") {
+    if (r === "ADMIN") {
       navigate("/admin/articles");
+      return;
+    }
+    if (r === "SPECIALIST" || r === "MODERATOR") {
+      navigate("/articles/submit");
       return;
     }
     setArticleHelpOpen(true);
