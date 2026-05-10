@@ -10,12 +10,13 @@ export class CreatePostDto {
   body: string;
 
   @ApiPropertyOptional({
-    description: 'До 8 URL из POST /api/uploads/thread-image (/uploads/thread/…) — сохраняются в теле поста отдельными строками.',
+    description:
+      'URL вложений: POST /api/uploads/thread-image (/uploads/thread/…) и/или POST /api/uploads/message-attachment (/uploads/messages/…). Максимум строк задаётся в админке (`uploads.forum.max_attachment_lines`, по умолчанию 10).',
     type: [String],
   })
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(8)
+  @ArrayMaxSize(25)
   @IsString({ each: true })
   @MaxLength(500, { each: true })
   attachmentUrls?: string[];

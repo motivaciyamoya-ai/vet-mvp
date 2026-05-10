@@ -37,6 +37,7 @@ async function bootstrap() {
   startDefaultMetrics();
   const uploadsRoot = join(process.cwd(), 'uploads');
   mkdirSync(join(uploadsRoot, 'thread'), { recursive: true });
+  mkdirSync(join(uploadsRoot, 'messages'), { recursive: true });
   mkdirSync(join(uploadsRoot, 'avatars'), { recursive: true });
   mkdirSync(join(uploadsRoot, 'listings'), { recursive: true });
 

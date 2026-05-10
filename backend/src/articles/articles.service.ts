@@ -1,7 +1,18 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateArticleDto } from './dto/create-article.dto';
+import { CreateArticleCommentDto } from './dto/create-article-comment.dto';
 import { ModerationService } from '../moderation/moderation.service';
+import { UploadsConfigService } from '../uploads/uploads-config.service';
+import {
+  sanitizeArticleCommentAttachmentUrls,
+  isMessageAttachmentLine,
+} from '../uploads/message-attachments.policy';
 
 const ARTICLE_COMMENT = 'ARTICLE_COMMENT';
 
@@ -23,6 +34,7 @@ export class ArticlesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
+    private readonly uploadsConfig: UploadsConfigService,
   ) {}
 
   categories() {
@@ -108,7 +120,7 @@ export class ArticlesService {
     }));
   }
 
-  async addComment(articleId: string, userId: string, body: string) {
+  async addComment(articleId: string, userId: string, dto: CreateArticleCommentDto) {
     const article = await this.prisma.article.findFirst({
       where: { id: articleId, published: true },
       select: { id: true, authorId: true, title: true },
@@ -123,11 +135,24 @@ export class ArticlesService {
       throw new ForbiddenException('Подтвердите email, чтобы оставлять комментарии.');
     }
 
-    const text = body.trim();
-    if (!text) throw new BadRequestException('Пустой комментарий');
+    const maxFiles = await this.uploadsConfig.messageMaxFilesPerComment();
+    const filesEnabled = await this.uploadsConfig.messageAttachmentsEnabled();
+    const rawUrls = filesEnabled
+      ? (dto.attachmentUrls ?? [])
+      : (dto.attachmentUrls ?? []).filter((u) => typeof u === 'string' && !isMessageAttachmentLine(u));
+    const urls = sanitizeArticleCommentAttachmentUrls(rawUrls, maxFiles);
+    const text = (dto.body ?? '').trim();
+    if (!text && urls.length === 0) {
+      throw new BadRequestException('Введите текст комментария или прикрепите файл');
+    }
+    const bodyStored =
+      urls.length === 0 ? text : text ? `${text}\n\n${urls.join('\n')}` : urls.join('\n');
+    if (bodyStored.length > 12000) {
+      throw new BadRequestException('Комментарий с вложениями слишком длинный');
+    }
 
     const created = await this.prisma.articleComment.create({
-      data: { articleId, authorId: userId, body: text },
+      data: { articleId, authorId: userId, body: bodyStored },
       include: {
         author: { select: { id: true, email: true, profile: true } },
       },
@@ -143,7 +168,7 @@ export class ArticlesService {
       });
       const who = commenterProfile?.displayName?.trim() || 'Участник';
       const title = `Комментарий к «${truncateArticleNotifyTitle(article.title)}»`;
-      const bodyLine = `${who}: ${excerptForNotification(text, 220)}`;
+      const bodyLine = `${who}: ${excerptForNotification(text || urls.join(' '), 220)}`;
 
       const commenters = await this.prisma.articleComment.findMany({
         where: { articleId: article.id },

@@ -360,7 +360,7 @@ export class AdminService {
   /** Иллюстрации на темах и строки /uploads/thread/… в телах постов — для раздела админки «Вложения». */
   async forumAttachmentsOverview() {
     const lineImageRx =
-      /^\/uploads\/thread\/[a-zA-Z0-9._-]+\.(?:jpe?g|png|webp|gif)$/i;
+      /^\/uploads\/(?:thread\/[a-zA-Z0-9._-]+\.(?:jpe?g|png|webp|gif)|messages\/[0-9a-f-]{36}\.(?:jpe?g|png|webp|gif|pdf|txt|docx))$/i;
 
     const extractUrlsFromBody = (body: string): string[] => {
       const out = new Set<string>();

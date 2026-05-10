@@ -13,6 +13,12 @@ import { UpdateForumPostDto } from './dto/update-forum-post.dto';
 import { VetcoinService } from '../vetcoin/vetcoin.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { SecurityPoliciesService } from '../security/security-policies.service';
+import {
+  sanitizeForumAttachmentUrlList,
+  isThreadImageAttachmentLine,
+  isMessageAttachmentLine,
+} from '../uploads/message-attachments.policy';
+import { UploadsConfigService } from '../uploads/uploads-config.service';
 
 /** Маркер в тегах: `URGENCY:medium|high|critical` — с сервера снимается стоимость горячей темы. */
 function parseHotUrgency(tags: string): {
@@ -55,17 +61,9 @@ function excerptForumBodyForFeed(raw: string, max = 280): string {
 const UUID_V4_RX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function sanitizeCoverImageUrls(raw?: string[]): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((u): u is string => typeof u === 'string')
-    .map((u) => u.trim())
-    .filter((u) => {
-      const ok =
-        /^\/uploads\/thread\/[a-zA-Z0-9._-]+\.(jpe?g|png|webp|gif)$/i.test(u) && u.length <= 500;
-      return ok;
-    })
-    .slice(0, 8);
+/** Только обложки темы — пути `/uploads/thread/…`. */
+function sanitizeThreadCoverImageUrls(raw?: string[]): string[] {
+  return sanitizeForumAttachmentUrlList(raw, 8).filter(isThreadImageAttachmentLine);
 }
 
 /** Поля связанного сообщения-победителя для лент (имя и аватар автора решения). */
@@ -85,6 +83,7 @@ export class ForumService {
     private readonly vetcoin: VetcoinService,
     private readonly moderation: ModerationService,
     private readonly securityPolicies: SecurityPoliciesService,
+    private readonly uploadsConfig: UploadsConfigService,
   ) {}
 
   categories() {
@@ -407,7 +406,7 @@ export class ForumService {
     const rawTags = dto.tags ?? '';
     const { urgency, rest } = parseHotUrgency(rawTags);
     const tagsToStore = urgency ? finalizeHotTags(rest, urgency) : rest.trim();
-    const coverImageUrls = sanitizeCoverImageUrls(dto.coverImageUrls ?? []);
+    const coverImageUrls = sanitizeThreadCoverImageUrls(dto.coverImageUrls ?? []);
 
     const thread = await this.prisma.$transaction(async (tx) => {
       if (urgency) {
@@ -468,10 +467,15 @@ export class ForumService {
     if (!thread) throw new NotFoundException();
     this.assertForumThreadOpen(thread);
     await this.securityPolicies.assertUserVerifiedForContent(userId);
-    const urls = sanitizeCoverImageUrls(dto.attachmentUrls ?? []);
+    const maxLines = await this.uploadsConfig.forumMaxAttachmentLines();
+    const filesEnabled = await this.uploadsConfig.messageAttachmentsEnabled();
+    const rawUrls = filesEnabled
+      ? (dto.attachmentUrls ?? [])
+      : (dto.attachmentUrls ?? []).filter((u) => typeof u === 'string' && !isMessageAttachmentLine(u));
+    const urls = sanitizeForumAttachmentUrlList(rawUrls, maxLines);
     const text = (dto.body ?? '').trim();
     if (!text && urls.length === 0) {
-      throw new BadRequestException('Введите текст ответа или прикрепите изображение');
+      throw new BadRequestException('Введите текст ответа или прикрепите файл');
     }
     const body =
       urls.length === 0 ? text : text ? `${text}\n\n${urls.join('\n')}` : urls.join('\n');

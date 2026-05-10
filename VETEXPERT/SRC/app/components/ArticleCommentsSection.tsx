@@ -1,11 +1,15 @@
-import { MessageCircle, Send, CornerDownLeft, X } from "lucide-react";
+import { MessageCircle, Paperclip, Send, CornerDownLeft, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
   apiArticleComments,
+  apiAttachmentsPolicy,
   apiPostArticleComment,
+  apiUploadMessageAttachment,
   type ArticleCommentDto,
+  type AttachmentsPolicyDto,
 } from "../../lib/api";
+import ForumRenderedBody from "./ForumRenderedBody";
 import { useAuth } from "../contexts/AuthContext";
 import ReportAbuseTrigger from "./ReportAbuseModal";
 import UserAvatar from "./UserAvatar";
@@ -23,6 +27,9 @@ export default function ArticleCommentsSection({ articleId }: Props) {
   const [postErr, setPostErr] = useState("");
   const [replyTo, setReplyTo] = useState<{ userId: string; name: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [commentAttachUrls, setCommentAttachUrls] = useState<string[]>([]);
+  const [commentUploading, setCommentUploading] = useState(false);
+  const [attachPolicy, setAttachPolicy] = useState<AttachmentsPolicyDto | null>(null);
 
   const load = useCallback(() => {
     setLoadErr("");
@@ -35,14 +42,40 @@ export default function ArticleCommentsSection({ articleId }: Props) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    apiAttachmentsPolicy()
+      .then(setAttachPolicy)
+      .catch(() =>
+        setAttachPolicy({
+          messagesEnabled: true,
+          maxMb: 12,
+          maxFilesPerComment: 5,
+          forumMaxAttachmentLines: 10,
+          allowedMimeTypes: [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif",
+            "text/plain",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          ],
+        }),
+      );
+  }, []);
+
   const submit = async () => {
     const b = text.trim();
-    if (!b) return;
+    if (!b && commentAttachUrls.length === 0) return;
     setPostErr("");
     setSending(true);
     try {
-      const row = await apiPostArticleComment(articleId, b);
+      const row = await apiPostArticleComment(articleId, {
+        body: b,
+        ...(commentAttachUrls.length > 0 ? { attachmentUrls: commentAttachUrls } : {}),
+      });
       setText("");
+      setCommentAttachUrls([]);
       setReplyTo(null);
       setComments((prev) => [...(prev ?? []), row]);
     } catch (e: unknown) {
@@ -130,7 +163,7 @@ export default function ArticleCommentsSection({ articleId }: Props) {
                       </button>
                     ) : null}
                   </div>
-                  <p className="text-gray-800 text-sm mt-1 whitespace-pre-wrap break-words">{c.body}</p>
+                  <ForumRenderedBody text={c.body} originalLang="ru" className="text-gray-800 text-sm mt-1" />
                 </div>
               </li>
             );
@@ -180,10 +213,79 @@ export default function ArticleCommentsSection({ articleId }: Props) {
               placeholder="Корректно и по делу: клинический опыт, ссылки на источники, вопросы автору…"
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
+            {attachPolicy === null ? (
+              <p className="text-xs text-gray-500">Загрузка настроек вложений…</p>
+            ) : attachPolicy.messagesEnabled ? (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600">
+                  Вложения: до {attachPolicy.maxFilesPerComment} файлов, до {attachPolicy.maxMb} МБ (PDF, изображения,
+                  TXT, DOCX). Пустой текст допустим, если есть файл.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {commentAttachUrls.map((url) => (
+                    <span
+                      key={url}
+                      className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs text-emerald-900 max-w-[200px]"
+                    >
+                      <Paperclip className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                      <span className="truncate">{url.split("/").pop()}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 text-gray-500 hover:text-red-600"
+                        aria-label="Удалить вложение"
+                        onClick={() => setCommentAttachUrls((p) => p.filter((u) => u !== url))}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                  {commentAttachUrls.length < attachPolicy.maxFilesPerComment && (
+                    <label className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-50">
+                      <Paperclip className="w-3.5 h-3.5" />
+                      Прикрепить файл
+                      <input
+                        type="file"
+                        className="sr-only"
+                        accept={attachPolicy.allowedMimeTypes.join(",")}
+                        disabled={commentUploading || sending}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (!f) return;
+                          setCommentUploading(true);
+                          void (async () => {
+                            try {
+                              const { url } = await apiUploadMessageAttachment(f);
+                              setCommentAttachUrls((p) =>
+                                p.length >= (attachPolicy?.maxFilesPerComment ?? 5) ? p : [...p, url],
+                              );
+                            } catch (err) {
+                              setPostErr(err instanceof Error ? err.message : "Ошибка загрузки");
+                            } finally {
+                              setCommentUploading(false);
+                            }
+                          })();
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+                {commentUploading ? <p className="text-xs text-gray-500">Загрузка файла…</p> : null}
+              </div>
+            ) : (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                Загрузка вложений отключена администратором (ключ <code className="font-mono">uploads.messages.enabled</code>
+                ).
+              </p>
+            )}
             {postErr && <p className="text-sm text-red-600">{postErr}</p>}
             <button
               type="button"
-              disabled={sending || !text.trim() || (user && !user.emailVerified)}
+              disabled={
+                sending ||
+                (!text.trim() && commentAttachUrls.length === 0) ||
+                (user && !user.emailVerified)
+              }
               onClick={() => void submit()}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
             >

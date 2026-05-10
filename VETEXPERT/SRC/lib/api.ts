@@ -147,6 +147,23 @@ export async function apiUploadThreadImage(file: File): Promise<{ url: string }>
   return apiMultipartJson<{ url: string }>("/api/uploads/thread-image", file);
 }
 
+/** Вложения к ответам на форуме и комментариям к статьям (PDF, изображения, TXT, DOCX). */
+export async function apiUploadMessageAttachment(file: File): Promise<{ url: string }> {
+  return apiMultipartJson<{ url: string }>("/api/uploads/message-attachment", file);
+}
+
+export type AttachmentsPolicyDto = {
+  messagesEnabled: boolean;
+  maxMb: number;
+  maxFilesPerComment: number;
+  forumMaxAttachmentLines: number;
+  allowedMimeTypes: string[];
+};
+
+export async function apiAttachmentsPolicy(): Promise<AttachmentsPolicyDto> {
+  return apiFetch<AttachmentsPolicyDto>("/api/reference/attachments-policy");
+}
+
 export async function apiUploadListingImage(file: File): Promise<{ url: string }> {
   return apiMultipartJson<{ url: string }>("/api/uploads/listing-image", file);
 }
@@ -389,10 +406,13 @@ export async function apiArticleComments(articleId: string) {
   );
 }
 
-export async function apiPostArticleComment(articleId: string, body: string) {
+export async function apiPostArticleComment(
+  articleId: string,
+  payload: { body: string; attachmentUrls?: string[] },
+) {
   return apiFetch<ArticleCommentDto>(`/api/articles/comments/${encodeURIComponent(articleId)}`, {
     method: "POST",
-    json: { body },
+    json: payload,
   });
 }
 

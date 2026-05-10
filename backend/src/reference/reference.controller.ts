@@ -2,6 +2,7 @@ import { Controller, Get, Header, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ForumService } from '../forum/forum.service';
 import { ReferenceService } from './reference.service';
+import { UploadsConfigService } from '../uploads/uploads-config.service';
 import { SpecialistsListQueryDto } from './dto/specialists-query.dto';
 import { PublicSiteSeoDto } from './dto/public-site-seo.dto';
 import { PublicLegalDto } from './dto/public-legal.dto';
@@ -12,6 +13,7 @@ export class ReferenceController {
   constructor(
     private readonly ref: ReferenceService,
     private readonly forum: ForumService,
+    private readonly uploadsConfig: UploadsConfigService,
   ) {}
 
   @Get('countries')
@@ -30,6 +32,12 @@ export class ReferenceController {
   @Get('maintenance')
   maintenance() {
     return this.ref.getPublicMaintenance();
+  }
+
+  /** Лимиты вложений к сообщениям (форум, комментарии к статьям). Публично, без авторизации. */
+  @Get('attachments-policy')
+  attachmentsPolicy() {
+    return this.uploadsConfig.publicAttachmentPolicy();
   }
 
   /** Политика конфиденциальности и cookies в HTML (ключи `legal.privacy_html`, `legal.cookies_html`). Без авторизации. */

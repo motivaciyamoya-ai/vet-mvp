@@ -2,6 +2,33 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { apiFetch, assetUrl } from "../../../lib/api";
 
+const UPLOAD_SETTINGS_KEYS = [
+  {
+    key: "uploads.messages.enabled",
+    label: "Вложения к сообщениям включены",
+    hint: "true / false — при false пользователи не смогут загружать файлы в ответах и комментариях к статьям.",
+    placeholder: "true",
+  },
+  {
+    key: "uploads.messages.max_mb",
+    label: "Максимальный размер одного файла (МБ)",
+    hint: "1–50, по умолчанию 12.",
+    placeholder: "12",
+  },
+  {
+    key: "uploads.messages.max_per_message",
+    label: "Макс. файлов в одном комментарии к статье",
+    hint: "1–10, по умолчанию 5.",
+    placeholder: "5",
+  },
+  {
+    key: "uploads.forum.max_attachment_lines",
+    label: "Макс. строк-вложений в одном ответе на форуме",
+    hint: "Картинки /uploads/thread/… и файлы /uploads/messages/…, 4–25, по умолчанию 10.",
+    placeholder: "10",
+  },
+] as const;
+
 type ThreadCoverRow = {
   id: string;
   title: string;
@@ -25,6 +52,9 @@ type Overview = {
 export default function AdminForumAttachments() {
   const [data, setData] = useState<Overview | null>(null);
   const [err, setErr] = useState("");
+  const [settingVals, setSettingVals] = useState<Record<string, string>>({});
+  const [settingsMsg, setSettingsMsg] = useState("");
+  const [settingsBusy, setSettingsBusy] = useState(false);
 
   const load = useCallback(() => {
     setErr("");
@@ -33,9 +63,27 @@ export default function AdminForumAttachments() {
       .catch((e) => setErr(String(e.message)));
   }, []);
 
+  const loadSettings = useCallback(() => {
+    setSettingsMsg("");
+    apiFetch<Array<{ key: string; value: string }>>("/api/admin/settings")
+      .then((rows) => {
+        const m: Record<string, string> = {};
+        for (const k of UPLOAD_SETTINGS_KEYS) {
+          const row = rows.find((r) => r.key === k.key);
+          m[k.key] = row?.value ?? "";
+        }
+        setSettingVals(m);
+      })
+      .catch((e) => setSettingsMsg(String(e.message)));
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   return (
     <div className="space-y-6">
@@ -49,14 +97,72 @@ export default function AdminForumAttachments() {
         <div className="p-4 text-sm text-slate-700 space-y-2">
           <p>
             Изображения к темам хранятся в поле <code className="text-xs bg-slate-100 px-1 rounded">coverImageUrls</code>.
-            Изображения в ответах сохраняются в теле поста отдельными строками с путём{" "}
-            <code className="text-xs bg-slate-100 px-1 rounded">/uploads/thread/…</code> после загрузки через API.
+            В ответах и комментариях к статьям вложения сохраняются в теле сообщения отдельными строками:{" "}
+            <code className="text-xs bg-slate-100 px-1 rounded">/uploads/thread/…</code> (иллюстрации темы) и{" "}
+            <code className="text-xs bg-slate-100 px-1 rounded">/uploads/messages/…</code> (файлы PDF, TXT, DOCX,
+            изображения через POST <code className="text-xs">/api/uploads/message-attachment</code>).
           </p>
           <p className="text-xs text-slate-500">
             Удаление файла с диска вручную не обновит БД — правьте тему или пост в разделе «Темы и посты».
           </p>
         </div>
       </div>
+
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 text-sm font-semibold text-slate-800 flex flex-wrap justify-between gap-2">
+          <span>Настройки файлов (SiteSetting)</span>
+          <button type="button" onClick={loadSettings} className="text-xs text-emerald-700 hover:underline font-medium">
+            Обновить поля
+          </button>
+        </div>
+        <div className="p-4 space-y-4 text-sm text-slate-700">
+          <p className="text-xs text-slate-500">
+            Значения пишутся в те же ключи, что и в разделе «Настройки сайта». После сохранения пользователям
+            достаточно обновить страницу.
+          </p>
+          {UPLOAD_SETTINGS_KEYS.map((row) => (
+            <div key={row.key} className="space-y-1">
+              <label className="block font-medium text-slate-800" htmlFor={`sett-${row.key}`}>
+                {row.label}
+              </label>
+              <p className="text-xs text-slate-500">{row.hint}</p>
+              <div className="flex flex-wrap gap-2 items-center">
+                <input
+                  id={`sett-${row.key}`}
+                  className="min-w-[12rem] flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
+                  value={settingVals[row.key] ?? ""}
+                  placeholder={row.placeholder}
+                  onChange={(e) => setSettingVals((prev) => ({ ...prev, [row.key]: e.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  disabled={settingsBusy}
+                  onClick={async () => {
+                    setSettingsBusy(true);
+                    setSettingsMsg("");
+                    try {
+                      await apiFetch(`/api/admin/settings/${encodeURIComponent(row.key)}`, {
+                        method: "PUT",
+                        json: { value: settingVals[row.key] ?? "" },
+                      });
+                      setSettingsMsg(`Сохранено: ${row.key}`);
+                      await loadSettings();
+                    } catch (e: unknown) {
+                      setSettingsMsg(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setSettingsBusy(false);
+                    }
+                  }}
+                >
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          ))}
+          {settingsMsg ? <p className="text-xs text-slate-600">{settingsMsg}</p> : null}
+        </div>
+      </section>
 
       {err ? <p className="text-red-600 text-sm">{err}</p> : null}
       {!data ? (

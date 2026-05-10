@@ -14,16 +14,25 @@ import {
   Flag,
   CornerDownLeft,
   ImagePlus,
+  Paperclip,
   Trash2,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import TranslatedContent from "./TranslatedContent";
-import ForumRenderedBody from "./ForumRenderedBody";
+import ForumRenderedBody, { FORUM_EMBEDDED_IMAGE_LINE } from "./ForumRenderedBody";
 import { ForumUrgencyBadgeOnGradient, ForumUrgencyIcon } from "./ForumUrgencyVisual";
 import UserAvatar from "./UserAvatar";
-import { apiFetch, apiUploadThreadImage, assetUrl, getOrCreateForumVisitorId } from "../../lib/api";
+import {
+  apiAttachmentsPolicy,
+  apiFetch,
+  apiUploadMessageAttachment,
+  apiUploadThreadImage,
+  assetUrl,
+  getOrCreateForumVisitorId,
+  type AttachmentsPolicyDto,
+} from "../../lib/api";
 import { applyRoutePageSeo, getCachedSiteSeo, plainTextExcerpt } from "../../lib/documentSeo";
 import { creatorForumTagLabels, tagsLookHot, urgencyFromTags } from "../../lib/forumTags";
 import ReportAbuseTrigger from "./ReportAbuseModal";
@@ -76,6 +85,13 @@ function displayName(profile: ApiProfileMini | null | undefined, email: string) 
 function displayLocation(profile: ApiProfileMini | null | undefined) {
   const loc = [profile?.city?.trim(), profile?.country?.nameRu].filter(Boolean).join(", ");
   return loc || "—";
+}
+
+function isForumImageAttachmentUrl(url: string): boolean {
+  const t = url.trim();
+  if (FORUM_EMBEDDED_IMAGE_LINE.test(t)) return true;
+  const tl = t.toLowerCase();
+  return tl.startsWith("/uploads/messages/") && /\.(jpe?g|png|webp|gif)$/i.test(tl);
 }
 
 function formatRelativeRu(iso: string): string {
@@ -133,6 +149,7 @@ export default function ForumTopicDetail() {
   /** URL вида /uploads/thread/… после успешной загрузки на сервер */
   const [replyAttachmentUrls, setReplyAttachmentUrls] = useState<string[]>([]);
   const [replyUploading, setReplyUploading] = useState(false);
+  const [attachPolicy, setAttachPolicy] = useState<AttachmentsPolicyDto | null>(null);
   const [likeBusy, setLikeBusy] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
@@ -183,6 +200,28 @@ export default function ForumTopicDetail() {
     setApiErr("");
     loadApiThread().finally(() => setApiLoading(false));
   }, [isLegacyNumericId, rawId, loadApiThread]);
+
+  useEffect(() => {
+    apiAttachmentsPolicy()
+      .then(setAttachPolicy)
+      .catch(() =>
+        setAttachPolicy({
+          messagesEnabled: true,
+          maxMb: 12,
+          maxFilesPerComment: 5,
+          forumMaxAttachmentLines: 10,
+          allowedMimeTypes: [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif",
+            "text/plain",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          ],
+        }),
+      );
+  }, []);
 
   useEffect(() => {
     if (!apiThread?.solvedAt) return;
@@ -919,41 +958,82 @@ export default function ForumTopicDetail() {
               maxLength={20000}
             />
             <div>
-              <p className="text-sm font-medium text-gray-900 mb-2">Вложения (изображения)</p>
-              <p className="text-xs text-gray-600 mb-2">JPEG, PNG, WebP или GIF до 8 МБ, до 8 файлов.</p>
+              <p className="text-sm font-medium text-gray-900 mb-2">Вложения</p>
+              {attachPolicy === null ? (
+                <p className="text-xs text-gray-500 mb-2">Загрузка настроек вложений…</p>
+              ) : attachPolicy.messagesEnabled ? (
+                <p className="text-xs text-gray-600 mb-2">
+                  До {attachPolicy.forumMaxAttachmentLines} файлов, до {attachPolicy.maxMb} МБ каждый: PDF, изображения,
+                  TXT, DOCX (настраивается в админке → Форум → Вложения).
+                </p>
+              ) : (
+                <p className="text-xs text-gray-600 mb-2">
+                  Загрузка файлов отключена администратором. Доступны только изображения JPEG/PNG/WebP/GIF до 8 МБ.
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
-                {replyAttachmentUrls.map((url) => (
-                  <div key={url} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group/rp">
-                    <img src={assetUrl(url)} alt="" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      aria-label="Убрать вложение"
-                      onClick={() => setReplyAttachmentUrls((prev) => prev.filter((u) => u !== url))}
-                      className="absolute inset-x-0 bottom-0 py-0.5 bg-black/55 text-white text-[10px]"
+                {replyAttachmentUrls.map((url) =>
+                  isForumImageAttachmentUrl(url) ? (
+                    <div key={url} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group/rp">
+                      <img src={assetUrl(url)} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        aria-label="Убрать вложение"
+                        onClick={() => setReplyAttachmentUrls((prev) => prev.filter((u) => u !== url))}
+                        className="absolute inset-x-0 bottom-0 py-0.5 bg-black/55 text-white text-[10px]"
+                      >
+                        <Trash2 className="w-3 h-3 mx-auto" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      key={url}
+                      className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/90 px-2 py-1.5 text-xs text-emerald-900 max-w-[220px]"
                     >
-                      <Trash2 className="w-3 h-3 mx-auto" />
-                    </button>
-                  </div>
-                ))}
-                {replyAttachmentUrls.length < 8 && (
+                      <Paperclip className="w-4 h-4 shrink-0" aria-hidden />
+                      <span className="truncate min-w-0">{url.split("/").pop()}</span>
+                      <button
+                        type="button"
+                        aria-label="Убрать вложение"
+                        onClick={() => setReplyAttachmentUrls((prev) => prev.filter((u) => u !== url))}
+                        className="shrink-0 p-1 rounded hover:bg-emerald-100 text-emerald-800"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ),
+                )}
+                {attachPolicy !== null &&
+                  replyAttachmentUrls.length < attachPolicy.forumMaxAttachmentLines && (
                   <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 text-gray-600">
-                    <ImagePlus className="w-5 h-5" />
+                    {attachPolicy.messagesEnabled ? (
+                      <Paperclip className="w-5 h-5" />
+                    ) : (
+                      <ImagePlus className="w-5 h-5" />
+                    )}
                     <span className="text-[9px] px-0.5 text-center mt-0.5">Файл</span>
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      accept={
+                        attachPolicy.messagesEnabled
+                          ? attachPolicy.allowedMimeTypes.join(",")
+                          : "image/jpeg,image/png,image/webp,image/gif"
+                      }
                       className="sr-only"
                       disabled={replyUploading || submittingReply}
                       onChange={(e) => {
                         const list = e.target.files;
                         e.target.value = "";
                         if (!list?.length || !user) return;
+                        const cap = attachPolicy.forumMaxAttachmentLines;
                         setReplyUploading(true);
                         void (async () => {
                           try {
                             for (const file of Array.from(list)) {
-                              const { url } = await apiUploadThreadImage(file);
-                              setReplyAttachmentUrls((prev) => (prev.length >= 8 ? prev : [...prev, url]));
+                              const { url } = attachPolicy.messagesEnabled
+                                ? await apiUploadMessageAttachment(file)
+                                : await apiUploadThreadImage(file);
+                              setReplyAttachmentUrls((prev) => (prev.length >= cap ? prev : [...prev, url]));
                             }
                           } catch (err) {
                             alert(err instanceof Error ? err.message : "Не удалось загрузить файл");

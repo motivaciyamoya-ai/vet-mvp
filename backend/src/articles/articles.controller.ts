@@ -52,7 +52,7 @@ export class ArticlesController {
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateArticleCommentDto,
   ) {
-    return this.articles.addComment(articleId, user.id, dto.body);
+    return this.articles.addComment(articleId, user.id, dto);
   }
 
   /** Совместимость со старым URL */
@@ -69,7 +69,7 @@ export class ArticlesController {
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateArticleCommentDto,
   ) {
-    return this.articles.addComment(articleId, user.id, dto.body);
+    return this.articles.addComment(articleId, user.id, dto);
   }
 
   @Get(':id')
