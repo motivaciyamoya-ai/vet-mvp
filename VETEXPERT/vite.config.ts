@@ -39,11 +39,16 @@ export default defineConfig({
   assetsInclude: ['**/*.svg', '**/*.csv'],
 
   build: {
+    /** CSS по чанкам маршрутов (ленивые страницы тянут свой CSS отдельно). */
+    cssCodeSplit: true,
+    /** Меньше лишнего в HTML; современные браузеры и так поддерживают modulepreload. */
+    modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
           if (id.includes('node_modules/recharts')) return 'vendor-recharts';
+          if (id.includes('node_modules/react-easy-crop')) return 'vendor-crop';
           if (id.includes('node_modules/react-router')) return 'vendor-router';
           if (id.includes('node_modules/react-dom')) return 'vendor-react';
           if (id.includes('node_modules/react/')) return 'vendor-react';

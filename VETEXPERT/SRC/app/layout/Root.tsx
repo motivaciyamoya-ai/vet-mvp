@@ -16,7 +16,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import LanguageSelector from "../components/LanguageSelector";
 import LanguageBanner from "../components/LanguageBanner";
 import NotificationPanel from "../components/NotificationPanel";
@@ -37,6 +37,7 @@ import {
 } from "../../lib/api";
 import { applyClientDocumentSeo, SITE_SEO_FALLBACK } from "../../lib/documentSeo";
 import MaintenancePage from "../components/MaintenancePage";
+import PageLoading from "../components/PageLoading";
 
 function RootContent() {
   const navigate = useNavigate();
@@ -476,7 +477,9 @@ function RootContent() {
         <ModerationAccountBanner />
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_min(288px,max(26vw,240px))] xl:grid-cols-[minmax(0,1fr)_308px] gap-6 lg:gap-8 items-start">
           <div className="min-w-0 order-1">
-            <Outlet />
+            <Suspense fallback={<PageLoading />}>
+              <Outlet />
+            </Suspense>
           </div>
           <aside
             aria-label="Боковая панель"

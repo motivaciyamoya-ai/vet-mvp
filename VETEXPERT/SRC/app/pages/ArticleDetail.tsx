@@ -5,6 +5,7 @@ import { applyRoutePageSeo, getCachedSiteSeo, plainTextExcerpt } from "../../lib
 import { apiFetch, assetUrl } from "../../lib/api";
 import TranslatedContent from "../components/TranslatedContent";
 import ArticleCommentsSection from "../components/ArticleCommentsSection";
+import OptimizedPicture from "../components/OptimizedPicture";
 import ReportAbuseTrigger from "../components/ReportAbuseModal";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -198,7 +199,13 @@ export default function ArticleDetail() {
 
         <div className="rounded-2xl overflow-hidden border border-emerald-100 shadow-lg bg-white">
           <div className="relative h-44 sm:h-56 bg-gray-200">
-            <img src={cover} alt="" className="w-full h-full object-cover" />
+            <OptimizedPicture
+              src={cover}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="eager"
+              fetchPriority="high"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             <div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
               <span className="bg-white/95 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold shadow">
@@ -219,7 +226,12 @@ export default function ArticleDetail() {
                 className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-4 border-white/40 shadow-xl bg-white/10 flex items-center justify-center"
               >
                 {avatar ? (
-                  <img src={avatar} alt="" className="w-full h-full object-cover" />
+                  <OptimizedPicture
+                    src={avatar}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
                 ) : (
                   <span className="text-2xl font-bold text-white">{authorInitialsFromName(authorLabel)}</span>
                 )}
@@ -285,7 +297,13 @@ export default function ArticleDetail() {
 
       <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
         <div className="relative h-48 sm:h-64 bg-gray-200">
-          <img src={cover} alt="" className="w-full h-full object-cover" />
+          <OptimizedPicture
+            src={cover}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="eager"
+            fetchPriority="high"
+          />
           <span className="absolute top-3 left-3 bg-white/95 backdrop-blur px-3 py-1 rounded-full text-sm font-semibold text-purple-800 shadow">
             {a.category}
           </span>

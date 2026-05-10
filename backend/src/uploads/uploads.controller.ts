@@ -14,6 +14,7 @@ import { join } from 'path';
 import { mkdirSync } from 'fs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ModerationGuard } from '../moderation/moderation.guard';
+import { finalizeUploadAsWebp } from './image-transcode.util';
 
 const allowedExt = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 
@@ -28,9 +29,10 @@ const threadDest = join(process.cwd(), 'uploads', 'thread');
 const avatarDest = join(process.cwd(), 'uploads', 'avatars');
 const listingDest = join(process.cwd(), 'uploads', 'listings');
 
-/** Результат `diskStorage` multer (`filename`). */
-interface MulterDiskFile {
+/** Поля `multer` diskStorage, нужные после загрузки. */
+interface UploadedDiskFile {
   filename?: string;
+  path?: string;
 }
 
 const imageFileInterceptor = (dest: string) =>
@@ -67,32 +69,38 @@ export class UploadsController {
   @Post('thread-image')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(imageFileInterceptor(threadDest))
-  uploadThreadImage(@UploadedFile() file?: MulterDiskFile) {
+  async uploadThreadImage(@UploadedFile() file?: UploadedDiskFile) {
     if (!file?.filename) {
       throw new BadRequestException('Прикрепите файл изображения (поле form-data: file)');
     }
-    return { url: `/uploads/thread/${file.filename}` };
+    const abs = file.path ?? join(threadDest, file.filename);
+    const name = await finalizeUploadAsWebp(abs);
+    return { url: `/uploads/thread/${name}` };
   }
 
   /** Аватар профиля; после ответа вызовите PATCH /users/me с { avatarUrl: url }. */
   @Post('avatar')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(imageFileInterceptor(avatarDest))
-  uploadAvatar(@UploadedFile() file?: MulterDiskFile) {
+  async uploadAvatar(@UploadedFile() file?: UploadedDiskFile) {
     if (!file?.filename) {
       throw new BadRequestException('Прикрепите файл изображения (поле form-data: file)');
     }
-    return { url: `/uploads/avatars/${file.filename}` };
+    const abs = file.path ?? join(avatarDest, file.filename);
+    const name = await finalizeUploadAsWebp(abs);
+    return { url: `/uploads/avatars/${name}` };
   }
 
   /** Изображение объявления (маркетплейс); URL вернётся как `/uploads/listings/…`. */
   @Post('listing-image')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(imageFileInterceptor(listingDest))
-  uploadListingImage(@UploadedFile() file?: MulterDiskFile) {
+  async uploadListingImage(@UploadedFile() file?: UploadedDiskFile) {
     if (!file?.filename) {
       throw new BadRequestException('Прикрепите файл изображения (поле form-data: file)');
     }
-    return { url: `/uploads/listings/${file.filename}` };
+    const abs = file.path ?? join(listingDest, file.filename);
+    const name = await finalizeUploadAsWebp(abs);
+    return { url: `/uploads/listings/${name}` };
   }
 }
