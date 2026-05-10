@@ -29,6 +29,26 @@ function upsertMetaName(name: string, content: string) {
   el.setAttribute("content", content);
 }
 
+/** Пути без публичной индексации (личные кабинеты, служебные, каталог специалистов). */
+const NOINDEX_PATH_PREFIXES = [
+  "/admin",
+  "/messages",
+  "/profile",
+  "/login",
+  "/register",
+  "/verify-email",
+  "/specialists",
+] as const;
+
+function shouldNoindexPath(pathname: string): boolean {
+  const p = pathname || "/";
+  return NOINDEX_PATH_PREFIXES.some((pref) => p === pref || p.startsWith(`${pref}/`));
+}
+
+function upsertMetaRobots(content: string) {
+  upsertMetaName("robots", content);
+}
+
 function upsertMetaProperty(property: string, content: string) {
   const sel = `meta[property="${property.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`;
   let el = document.querySelector(sel) as HTMLMetaElement | null;
@@ -215,6 +235,8 @@ export function applyRoutePageSeo(
     upsertMetaProperty("og:image", seo.ogImageAbsolute.trim());
     upsertMetaName("twitter:image", seo.ogImageAbsolute.trim());
   }
+
+  upsertMetaRobots(shouldNoindexPath(pathWhenApplied) ? "noindex, nofollow" : "index, follow");
 }
 
 /**
@@ -277,4 +299,6 @@ export function applyClientDocumentSeo(pathname: string, seo: PublicSiteSeoDto):
     };
     ld.textContent = JSON.stringify(payload);
   }
+
+  upsertMetaRobots(shouldNoindexPath(pathname || "/") ? "noindex, nofollow" : "index, follow");
 }

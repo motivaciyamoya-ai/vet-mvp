@@ -1,6 +1,6 @@
 import { Globe, Loader2, MapPin, MessageSquare, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import { apiFetch } from "../../lib/api";
 import HomeLobbyChat from "./HomeLobbyChat";
 import ForumHeroAsideCard from "./ForumHeroAsideCard";
@@ -75,12 +75,6 @@ export default function SiteAside() {
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
             О платформе
           </h2>
-          <Link
-            to="/specialists"
-            className="text-[11px] font-medium text-emerald-700 hover:text-emerald-800 shrink-0"
-          >
-            Каталог
-          </Link>
         </div>
         <div className="p-3 space-y-2">
           {loadErr ? (

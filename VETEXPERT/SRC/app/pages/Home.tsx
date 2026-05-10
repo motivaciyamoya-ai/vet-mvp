@@ -1,4 +1,4 @@
-import { Users, Globe, MapPin, MessageSquare, Loader2 } from "lucide-react";
+import { Users, Globe, MessageSquare, Loader2, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { FORUM_NEW_HOT_PATH } from "../../lib/forumHotTopicPath";
@@ -56,8 +56,8 @@ export default function Home() {
           Добро пожаловать в VetConnect
         </h1>
         <p className="text-emerald-50/95 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
-          Профессиональная платформа для ветеринарных специалистов. Регистрация задаёт страну и город — они
-          попадают в открытый каталог.
+          Профессиональная платформа для ветеринарных специалистов. При регистрации укажите страну и город — это
+          помогает сообществу видеть географию участников.
         </p>
         <div className="mt-5 flex flex-col sm:flex-row flex-wrap gap-3 items-stretch">
           <GuestPublishGate tone="hero" promptClassName="max-w-xl">
@@ -107,12 +107,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <Link
-            to="/specialists"
-            className="text-sm font-medium text-emerald-700 hover:text-emerald-800 shrink-0"
-          >
-            Каталог →
-          </Link>
         </div>
 
         {byCountry == null && !loadErr ? (
@@ -122,24 +116,21 @@ export default function Home() {
           </div>
         ) : byCountry != null && byCountry.items.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-slate-600">
-            Пока никто не зарегистрирован. Станьте первым специалистом в каталоге.
+            Пока никто не зарегистрирован. Станьте первым участником платформы.
           </p>
         ) : byCountry != null ? (
           <>
             <div className="max-h-[min(22rem,52vh)] overflow-y-auto divide-y divide-slate-100">
               {byCountry.items.slice(0, 10).map((row) => (
-                <Link
+                <div
                   key={row.countryId}
-                  to={`/specialists?country=${encodeURIComponent(row.countryId)}`}
-                  className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50/90 transition-colors group"
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50/90 transition-colors"
                 >
                   <span className="text-xl shrink-0 tabular-nums" aria-hidden>
                     {flagEmojiFromAlpha2(row.code)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate group-hover:text-emerald-800">
-                      {row.nameRu}
-                    </p>
+                    <p className="text-sm font-medium text-slate-900 truncate">{row.nameRu}</p>
                     <p className="text-xs text-slate-500">
                       {pluralRuNoun(row.citiesRepresented, {
                         one: "город",
@@ -152,14 +143,14 @@ export default function Home() {
                     <p className="text-sm font-semibold text-slate-900 tabular-nums">{row.specialists}</p>
                     <p className="text-[10px] uppercase tracking-wide text-slate-400">спец.</p>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
             {byCountry.items.length > 10 && (
               <div className="px-5 py-2 text-center border-t border-slate-100 bg-slate-50/50">
-                <Link to="/specialists" className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
-                  Все {byCountry.items.length} стран в каталоге →
-                </Link>
+                <p className="text-xs text-slate-600">
+                  Показаны 10 из {byCountry.items.length} стран с зарегистрированными участниками.
+                </p>
               </div>
             )}
           </>
@@ -169,7 +160,7 @@ export default function Home() {
           <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
             <span className="inline-flex items-center gap-2">
               <Users className="w-4 h-4 text-slate-400" />
-              В каталоге: <strong className="text-slate-900">{formatInt(byCountry.totalSpecialists)}</strong>{" "}
+              Зарегистрировано: <strong className="text-slate-900">{formatInt(byCountry.totalSpecialists)}</strong>{" "}
               специалистов
             </span>
           </div>
@@ -194,12 +185,15 @@ export default function Home() {
           <span className="text-xs font-medium text-violet-700">Читать →</span>
         </Link>
         <Link
-          to="/specialists"
+          to="/events"
           className="rounded-xl border border-slate-200 bg-white p-5 hover:border-amber-200 hover:bg-amber-50/40 transition-colors"
         >
-          <h3 className="font-semibold text-slate-900 text-sm mb-1">Специалисты</h3>
-          <p className="text-slate-600 text-xs leading-relaxed mb-3">Поиск по стране и городу регистрации</p>
-          <span className="text-xs font-medium text-amber-800">Каталог →</span>
+          <h3 className="font-semibold text-slate-900 text-sm mb-1 inline-flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-amber-700 shrink-0" aria-hidden />
+            Мероприятия
+          </h3>
+          <p className="text-slate-600 text-xs leading-relaxed mb-3">Календарь вебинаров и встреч</p>
+          <span className="text-xs font-medium text-amber-800">Открыть →</span>
         </Link>
       </div>
     </div>

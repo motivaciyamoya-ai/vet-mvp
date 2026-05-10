@@ -15,7 +15,6 @@ import {
   ShoppingBag,
   Stethoscope,
   User,
-  Users,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -65,7 +64,6 @@ function RootContent() {
       forum: string;
       articles: string;
       events: string;
-      specialists: string;
       tools: string;
       marketplace: string;
       messages: string;
@@ -77,7 +75,6 @@ function RootContent() {
       forum: "Форум",
       articles: "Статьи",
       events: "Мероприятия",
-      specialists: "Специалисты",
       tools: "AI-инструменты",
       marketplace: "Маркетплейс",
       messages: "Сообщения",
@@ -88,7 +85,6 @@ function RootContent() {
       forum: "Forum",
       articles: "Articles",
       events: "Events",
-      specialists: "Specialists",
       tools: "AI Tools",
       marketplace: "Marketplace",
       messages: "Messages",
@@ -99,7 +95,6 @@ function RootContent() {
       forum: "Форум",
       articles: "Статті",
       events: "Події",
-      specialists: "Спеціалісти",
       tools: "AI-інструменти",
       marketplace: "Маркетплейс",
       messages: "Повідомлення",
@@ -110,7 +105,6 @@ function RootContent() {
       forum: "Forum",
       articles: "Artikel",
       events: "Veranstaltungen",
-      specialists: "Spezialisten",
       tools: "KI-Tools",
       marketplace: "Marktplatz",
       messages: "Nachrichten",
@@ -121,7 +115,6 @@ function RootContent() {
       forum: "Forum",
       articles: "Articles",
       events: "Évènements",
-      specialists: "Spécialistes",
       tools: "Outils IA",
       marketplace: "Marketplace",
       messages: "Messages",
@@ -132,7 +125,6 @@ function RootContent() {
       forum: "Foro",
       articles: "Artículos",
       events: "Eventos",
-      specialists: "Especialistas",
       tools: "Herramientas IA",
       marketplace: "Mercado",
       messages: "Mensajes",
@@ -147,7 +139,6 @@ function RootContent() {
     { to: "/forum", icon: MessageSquare, label: t.forum },
     { to: "/articles", icon: FileText, label: t.articles },
     { to: "/events", icon: Calendar, label: t.events },
-    { to: "/specialists", icon: Users, label: t.specialists },
     { to: "/tools", icon: Stethoscope, label: t.tools },
     { to: "/marketplace", icon: ShoppingBag, label: t.marketplace },
   ];

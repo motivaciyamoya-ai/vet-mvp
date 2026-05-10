@@ -360,7 +360,6 @@ export class ReferenceService {
       [`${base}/forum`, 'daily', '0.95'],
       [`${base}/articles`, 'weekly', '0.9'],
       [`${base}/events`, 'weekly', '0.85'],
-      [`${base}/specialists`, 'weekly', '0.8'],
       [`${base}/tools`, 'weekly', '0.85'],
       [`${base}/marketplace`, 'daily', '0.8'],
       [`${base}/privacy`, 'yearly', '0.25'],

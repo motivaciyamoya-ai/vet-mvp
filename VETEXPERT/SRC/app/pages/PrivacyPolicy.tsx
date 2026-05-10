@@ -1,122 +1,24 @@
 import { Link } from "react-router";
+import PrivacyPolicyRuContent, {
+  PRIVACY_POLICY_EFFECTIVE_DATE,
+  PRIVACY_POLICY_VERSION,
+} from "../components/legal/PrivacyPolicyRuContent";
 
 export default function PrivacyPolicy() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Политика конфиденциальности</h1>
-        <Link to="/" className="text-sm font-semibold text-emerald-700 hover:underline">
+        <p className="text-xs text-slate-500 sm:text-sm">
+          Версия {PRIVACY_POLICY_VERSION} от {PRIVACY_POLICY_EFFECTIVE_DATE}
+        </p>
+        <Link to="/" className="text-sm font-semibold text-emerald-700 hover:underline shrink-0">
           На главную
         </Link>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 space-y-5 text-sm leading-relaxed text-slate-800">
-        <p className="text-slate-600 text-xs">
-          Версия: 1.0 • Дата публикации: {new Date().toLocaleDateString("ru-RU")}
-        </p>
-
-        <p>
-          Настоящая Политика конфиденциальности (далее — «Политика») описывает порядок обработки и защиты персональных
-          данных пользователей сайта/приложения VetExpert (далее — «Сервис») в соответствии с законодательством Российской
-          Федерации, включая, но не ограничиваясь: Федеральным законом №152‑ФЗ «О персональных данных», №149‑ФЗ
-          «Об информации…», а также требованиями по обеспечению безопасности персональных данных.
-        </p>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">1. Оператор персональных данных</h2>
-          <p>
-            Оператор: <span className="font-semibold">[ООО/ИП «Название»]</span>, ИНН{" "}
-            <span className="font-semibold">[ИНН]</span>, ОГРН/ОГРНИП <span className="font-semibold">[ОГРН]</span>
-            <br />
-            Адрес: <span className="font-semibold">[юридический адрес]</span>
-            <br />
-            Контакты по вопросам персональных данных: <span className="font-semibold">[email]</span>
-          </p>
-          <p className="text-xs text-slate-600">
-            Заполните плейсхолдеры реквизитами вашей организации до публикации в продакшн.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">2. Какие данные мы обрабатываем</h2>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>данные аккаунта: e‑mail, пароль (в виде хэша на сервере), роль, статус подтверждения e‑mail;</li>
-            <li>данные профиля: отображаемое имя, страна/город, должность, аватар, дата рождения (если заполнена);</li>
-            <li>контент и активность: сообщения, комментарии, темы, реакции, жалобы, объявления и переписка по ним;</li>
-            <li>технические данные: IP‑адрес, user‑agent, дата/время запросов, cookies и идентификаторы сессии.</li>
-          </ul>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">3. Цели обработки</h2>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>регистрация, авторизация и предоставление функций Сервиса;</li>
-            <li>модерация контента, предотвращение злоупотреблений и обеспечение безопасности;</li>
-            <li>уведомления о событиях, связанных с участием пользователя (ответы/комментарии/сообщения);</li>
-            <li>улучшение качества работы Сервиса и диагностика ошибок;</li>
-            <li>выполнение требований законодательства РФ.</li>
-          </ul>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">4. Правовые основания</h2>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>исполнение договора/пользовательского соглашения (предоставление Сервиса);</li>
-            <li>согласие субъекта персональных данных (в случаях, когда оно требуется);</li>
-            <li>законные интересы оператора (обеспечение безопасности, предотвращение мошенничества);</li>
-            <li>исполнение обязанностей по закону.</li>
-          </ul>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">5. Передача третьим лицам</h2>
-          <p>
-            Мы можем привлекать подрядчиков (хостинг, почта, аналитика, пуш‑уведомления) как лиц, обрабатывающих данные по
-            поручению оператора. Передача осуществляется на основании договоров и только в объёме, необходимом для
-            предоставления Сервиса.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">6. Сроки хранения</h2>
-          <p>
-            Персональные данные обрабатываются и хранятся не дольше, чем это необходимо для целей обработки, если иные
-            сроки не установлены законом. Контент пользователя может храниться до удаления аккаунта и/или в сроки,
-            предусмотренные правилами Сервиса и требованиями законодательства.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">7. Права пользователя</h2>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>получать сведения об обработке персональных данных;</li>
-            <li>требовать уточнения, блокирования или уничтожения данных при наличии оснований;</li>
-            <li>отзывать согласие (если обработка основана на согласии);</li>
-            <li>обжаловать действия оператора в Роскомнадзоре и/или суде.</li>
-          </ul>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">8. Cookies и аналогичные технологии</h2>
-          <p>
-            Сервис использует cookies и локальное хранилище (localStorage) для работы сессии, сохранения настроек и
-            обеспечения функциональности. Подробнее см.{" "}
-            <Link to="/cookies" className="text-emerald-700 font-semibold hover:underline">
-              Политику cookies
-            </Link>
-            .
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-base font-bold">9. Изменения Политики</h2>
-          <p>
-            Мы можем обновлять Политику. Актуальная версия всегда доступна на этой странице. Продолжение использования
-            Сервиса означает согласие с обновлённой Политикой.
-          </p>
-        </div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+        <PrivacyPolicyRuContent />
       </div>
     </div>
   );
 }
-

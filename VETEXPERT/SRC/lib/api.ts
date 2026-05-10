@@ -642,59 +642,6 @@ export async function apiAdminLiveTraffic(windowSec = 300) {
   return apiFetch<AdminLiveTrafficSnapshot>(`/api/admin/analytics/live-traffic?${sp.toString()}`);
 }
 
-export type AdminLiveTrafficHistoryRange = "day" | "week" | "month" | "3m";
-export type AdminLiveTrafficHistory = {
-  range: AdminLiveTrafficHistoryRange;
-  bucket: "minute" | "hour" | "day";
-  generatedAt: string;
-  points: {
-    at: string;
-    totalHits: number;
-    humanHits: number;
-    botHits: number;
-    uniqueHumanIps: number;
-    uniqueBotIps: number;
-  }[];
-};
-
-export async function apiAdminLiveTrafficHistory(range: AdminLiveTrafficHistoryRange) {
-  const sp = new URLSearchParams();
-  sp.set("range", range);
-  return apiFetch<AdminLiveTrafficHistory>(
-    `/api/admin/analytics/live-traffic/history?${sp.toString()}`,
-  );
-}
-
-export type AdminLiveTrafficSummary = {
-  range: AdminLiveTrafficHistoryRange;
-  generatedAt: string;
-  totalHits: number;
-  humanHits: number;
-  botHits: number;
-  humanSharePct: number;
-  botSharePct: number;
-};
-
-export async function apiAdminLiveTrafficSummary(range: AdminLiveTrafficHistoryRange) {
-  const sp = new URLSearchParams();
-  sp.set("range", range);
-  return apiFetch<AdminLiveTrafficSummary>(`/api/admin/analytics/live-traffic/summary?${sp.toString()}`);
-}
-
-export type AdminLiveTrafficTopPaths = {
-  range: AdminLiveTrafficHistoryRange;
-  generatedAt: string;
-  limit: number;
-  rows: { path: string; hits: number; humanHits: number; botHits: number }[];
-};
-
-export async function apiAdminLiveTrafficTopPaths(range: AdminLiveTrafficHistoryRange, limit = 20) {
-  const sp = new URLSearchParams();
-  sp.set("range", range);
-  sp.set("limit", String(limit));
-  return apiFetch<AdminLiveTrafficTopPaths>(`/api/admin/analytics/live-traffic/top?${sp.toString()}`);
-}
-
 export type MedicalAnalyzerKind = "anamnesis" | "imaging";
 
 export type MedicalAnalyzerResultDto = {
@@ -706,36 +653,7 @@ export type MedicalAnalyzerResultDto = {
   additionalTests: string[];
   notesForDoctor: string[];
   disclaimer: string;
-  analysisId: string;
-  charged: boolean;
-  cost: number;
-  balanceAfter?: number;
-  status: "SUCCESS" | "EMPTY";
 };
-
-export type MedicalAnalyzerPricingDto = { cost: number; currencyDisplayName: string };
-
-export async function apiMedicalAnalyzerPricing() {
-  return apiFetch<MedicalAnalyzerPricingDto>("/api/ai/medical-analyzer/pricing");
-}
-
-export type MedicalAnalyzerHistoryRowDto = {
-  id: string;
-  kind: MedicalAnalyzerKind;
-  createdAt: string;
-  status: "SUCCESS" | "EMPTY" | "ERROR";
-  charged: boolean;
-  cost: number;
-  provider: string;
-  model: string;
-  imagesCount: number;
-  errorMessage?: string | null;
-  result?: MedicalAnalyzerResultDto | null;
-};
-
-export async function apiMedicalAnalyzerHistory() {
-  return apiFetch<MedicalAnalyzerHistoryRowDto[]>("/api/ai/medical-analyzer/history");
-}
 
 export async function apiMedicalAnalyzerAnalyze(input: {
   kind: MedicalAnalyzerKind;

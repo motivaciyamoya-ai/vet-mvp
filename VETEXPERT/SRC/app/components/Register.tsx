@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { User, Mail, Lock, Eye, EyeOff, MapPin, GraduationCap, Briefcase, Building2, Award, Globe, ChevronRight, ChevronLeft, Check, Loader, Cake } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
+import PrivacyPolicyRuContent from "./legal/PrivacyPolicyRuContent";
 
 function toIsoLocalDateOnly(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -85,6 +86,34 @@ export default function Register() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const policyScrollRef = useRef<HTMLDivElement>(null);
+  const [policyReadToEnd, setPolicyReadToEnd] = useState(false);
+
+  const syncPolicyScrollState = () => {
+    const el = policyScrollRef.current;
+    if (!el) return;
+    const tolerance = 36;
+    const noScrollNeeded = el.scrollHeight <= el.clientHeight + 4;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= tolerance;
+    if (noScrollNeeded || atBottom) setPolicyReadToEnd(true);
+  };
+
+  useLayoutEffect(() => {
+    if (formData.policyAccepted) return;
+    setPolicyReadToEnd(false);
+    syncPolicyScrollState();
+    const id = requestAnimationFrame(() => syncPolicyScrollState());
+    return () => cancelAnimationFrame(id);
+  }, [formData.policyAccepted]);
+
+  useEffect(() => {
+    if (formData.policyAccepted) return;
+    const el = policyScrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => syncPolicyScrollState());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [formData.policyAccepted]);
 
   const updateField = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -161,6 +190,69 @@ export default function Register() {
     d.setFullYear(d.getFullYear() - 100);
     return toIsoLocalDateOnly(d);
   })();
+
+  /** Без явного согласия с политикой регистрация не начинается (152‑ФЗ). */
+  if (!formData.policyAccepted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-6 sm:p-8 space-y-4">
+          <div className="text-center space-y-1">
+            <div className="inline-flex w-14 h-14 bg-emerald-600 rounded-2xl items-center justify-center mx-auto mb-2">
+              <span className="text-white font-bold text-2xl">V</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Политика конфиденциальности</h1>
+            <p className="text-sm text-gray-600">
+              Для продолжения регистрации на VetConnect ознакомьтесь с текстом политики до конца и выберите вариант
+              ниже.
+            </p>
+          </div>
+
+          <div
+            ref={policyScrollRef}
+            onScroll={syncPolicyScrollState}
+            className="max-h-[min(52vh,26rem)] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 scroll-smooth"
+          >
+            <PrivacyPolicyRuContent hideTitle className="!space-y-4" />
+          </div>
+
+          {!policyReadToEnd && (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Прокрутите документ выше до конца — после этого станет доступна кнопка «Согласен». Полный текст также
+              доступен на странице{" "}
+              <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                Политика конфиденциальности
+              </Link>
+              .
+            </p>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+            <button
+              type="button"
+              disabled={!policyReadToEnd}
+              onClick={() => {
+                updateField("policyAccepted", true);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-3 rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all font-semibold shadow-lg disabled:opacity-45 disabled:cursor-not-allowed"
+            >
+              <Check className="w-5 h-5 shrink-0" />
+              Согласен
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/login")}
+              className="flex-1 px-4 py-3 rounded-lg border-2 border-gray-300 text-gray-800 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Не согласен
+            </button>
+          </div>
+          <p className="text-xs text-center text-slate-500">
+            При выборе «Не согласен» регистрация не выполняется — вы возвращаетесь к странице входа.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center p-4">
@@ -608,29 +700,19 @@ export default function Register() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <label className="flex items-start gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={formData.policyAccepted}
-                      onChange={(e) => updateField("policyAccepted", e.target.checked)}
-                      className="mt-1 h-4 w-4 accent-emerald-600"
-                    />
-                    <span className="text-sm text-slate-800">
-                      Я ознакомлен(а) и согласен(на) с{" "}
-                      <Link to="/privacy" className="text-emerald-700 font-semibold hover:underline">
-                        политикой конфиденциальности
-                      </Link>{" "}
-                      и{" "}
-                      <Link to="/cookies" className="text-emerald-700 font-semibold hover:underline">
-                        политикой cookies
-                      </Link>
-                      .
-                      <span className="block text-xs text-slate-500 mt-1">
-                        Без согласия регистрация невозможна.
-                      </span>
-                    </span>
-                  </label>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-slate-800">
+                  <p className="font-semibold text-emerald-900 mb-1">Согласие на обработку персональных данных</p>
+                  <p>
+                    На первом шаге вы подтвердили ознакомление с{" "}
+                    <Link to="/privacy" className="text-emerald-800 font-semibold hover:underline">
+                      политикой конфиденциальности
+                    </Link>
+                    . Дополнительно действует{" "}
+                    <Link to="/cookies" className="text-emerald-800 font-semibold hover:underline">
+                      политика cookies
+                    </Link>
+                    .
+                  </p>
                 </div>
               </>
             )}
