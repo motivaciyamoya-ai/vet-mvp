@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ArticleModerationStatus, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { prismaArticleHasModerationColumn } from '../common/prisma-article-schema';
 import type { SpecialistsListQueryDto } from './dto/specialists-query.dto';
 import type { PublicSiteSeoDto } from './dto/public-site-seo.dto';
 
@@ -391,6 +392,7 @@ export class ReferenceService {
       ...staticPaths.map(([loc, ch, pr]) => urlRow(loc, ch, pr)),
     ];
 
+    const hasArticleMod = await prismaArticleHasModerationColumn(this.prisma);
     const [forumCats, forumThreads, articles] = await Promise.all([
       this.prisma.forumCategory.findMany({
         select: { slug: true },
@@ -402,10 +404,12 @@ export class ReferenceService {
         take: 2500,
       }),
       this.prisma.article.findMany({
-        where: {
-          published: true,
-          moderationStatus: { in: [ArticleModerationStatus.NONE, ArticleModerationStatus.APPROVED] },
-        },
+        where: hasArticleMod
+          ? {
+              published: true,
+              moderationStatus: { in: [ArticleModerationStatus.NONE, ArticleModerationStatus.APPROVED] },
+            }
+          : { published: true },
         select: { id: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
         take: 4000,

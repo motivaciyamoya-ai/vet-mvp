@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { ArticleModerationStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  prismaArticleCommentHasAttachmentColumn,
+  prismaArticleHasModerationColumn,
+} from '../common/prisma-article-schema';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { CreateArticleCommentDto } from './dto/create-article-comment.dto';
 import { PatchArticleCommentDto } from './dto/patch-article-comment.dto';
@@ -35,14 +39,6 @@ function truncateArticleNotifyTitle(title: string, max = 72): string {
   return `${t.slice(0, max - 1)}…`;
 }
 
-/** Публичный каталог и страница статьи: только опубликованные и не отклонённые / не на очереди. */
-function publishedArticleWhere() {
-  return {
-    published: true,
-    moderationStatus: { in: [ArticleModerationStatus.NONE, ArticleModerationStatus.APPROVED] },
-  };
-}
-
 function splitCommentBodyFromStorage(body: string, dbUrls: string[]): { text: string; urls: string[] } {
   const lines = (body ?? '').replace(/\r\n/g, '\n').split('\n');
   const fromBody: string[] = [];
@@ -57,6 +53,16 @@ function splitCommentBodyFromStorage(body: string, dbUrls: string[]): { text: st
   return { text, urls };
 }
 
+function normalizeArticleRow<T extends Record<string, unknown>>(row: T, hasMod: boolean): T & { moderationStatus: string; attachmentUrls: string[] } {
+  return {
+    ...row,
+    moderationStatus: hasMod
+      ? String(row.moderationStatus ?? ArticleModerationStatus.NONE)
+      : ArticleModerationStatus.NONE,
+    attachmentUrls: Array.isArray(row.attachmentUrls) ? (row.attachmentUrls as string[]) : [],
+  };
+}
+
 @Injectable()
 export class ArticlesService {
   constructor(
@@ -65,6 +71,26 @@ export class ArticlesService {
     private readonly uploadsConfig: UploadsConfigService,
   ) {}
 
+  private async publishedArticleWhere(): Promise<Record<string, unknown>> {
+    if (await prismaArticleHasModerationColumn(this.prisma)) {
+      return {
+        published: true,
+        moderationStatus: { in: [ArticleModerationStatus.NONE, ArticleModerationStatus.APPROVED] },
+      };
+    }
+    return { published: true };
+  }
+
+  private authorSelectList() {
+    return { select: { id: true, email: true, profile: true } } as const;
+  }
+
+  private authorSelectDetail() {
+    return {
+      select: { id: true, email: true, profile: { include: { country: true, jobTitle: true } } },
+    } as const;
+  }
+
   categories() {
     return this.prisma.articleCategory.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
@@ -72,8 +98,10 @@ export class ArticlesService {
   }
 
   async list(q?: string, categorySlug?: string, page = 1, pageSize = 20) {
+    const hasMod = await prismaArticleHasModerationColumn(this.prisma);
     const skip = (page - 1) * pageSize;
-    const where: Record<string, unknown> = { ...publishedArticleWhere() };
+    const pub = await this.publishedArticleWhere();
+    const where: Record<string, unknown> = { ...pub };
     if (categorySlug) {
       const cat = await this.prisma.articleCategory.findUnique({ where: { slug: categorySlug } });
       if (cat) where.categoryId = cat.id;
@@ -85,50 +113,151 @@ export class ArticlesService {
         { excerpt: { contains: needle, mode: 'insensitive' } },
       ];
     }
+
+    const selectList = hasMod
+      ? ({
+          id: true,
+          title: true,
+          excerpt: true,
+          published: true,
+          createdAt: true,
+          moderationStatus: true,
+          attachmentUrls: true,
+          categoryId: true,
+          authorId: true,
+          category: true,
+          author: this.authorSelectList(),
+        } as const)
+      : ({
+          id: true,
+          title: true,
+          excerpt: true,
+          published: true,
+          createdAt: true,
+          categoryId: true,
+          authorId: true,
+          category: true,
+          author: this.authorSelectList(),
+        } as const);
+
     const [items, total] = await Promise.all([
       this.prisma.article.findMany({
-        where,
+        where: where as never,
         orderBy: { createdAt: 'desc' },
         skip,
         take: pageSize,
-        include: {
-          category: true,
-          author: { select: { id: true, email: true, profile: true } },
-        },
+        select: selectList as never,
       }),
-      this.prisma.article.count({ where }),
+      this.prisma.article.count({ where: where as never }),
     ]);
-    return { items, total, page, pageSize };
+
+    return {
+      items: items.map((row) => normalizeArticleRow(row as Record<string, unknown>, hasMod)),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async byId(id: string) {
+    const hasMod = await prismaArticleHasModerationColumn(this.prisma);
+    const pub = await this.publishedArticleWhere();
+    const selectDetail = hasMod
+      ? ({
+          id: true,
+          categoryId: true,
+          authorId: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          moderationStatus: true,
+          attachmentUrls: true,
+          category: true,
+          author: this.authorSelectDetail(),
+        } as const)
+      : ({
+          id: true,
+          categoryId: true,
+          authorId: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          category: true,
+          author: this.authorSelectDetail(),
+        } as const);
+
     const a = await this.prisma.article.findFirst({
-      where: { id, ...publishedArticleWhere() },
-      include: {
-        category: true,
-        author: { select: { id: true, email: true, profile: { include: { country: true, jobTitle: true } } } },
-      },
+      where: { id, ...(pub as object) } as never,
+      select: selectDetail as never,
     });
     if (!a) throw new NotFoundException();
-    return a;
+    return normalizeArticleRow(a as Record<string, unknown>, hasMod);
   }
 
   /** Автор статьи, админ или модератор — просмотр до публикации. */
   async previewById(id: string, userId: string, role: UserRole) {
+    const hasMod = await prismaArticleHasModerationColumn(this.prisma);
+    const selectDetail = hasMod
+      ? ({
+          id: true,
+          categoryId: true,
+          authorId: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          moderationStatus: true,
+          attachmentUrls: true,
+          category: true,
+          author: this.authorSelectDetail(),
+        } as const)
+      : ({
+          id: true,
+          categoryId: true,
+          authorId: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          category: true,
+          author: this.authorSelectDetail(),
+        } as const);
+
     const a = await this.prisma.article.findUnique({
       where: { id },
-      include: {
-        category: true,
-        author: { select: { id: true, email: true, profile: { include: { country: true, jobTitle: true } } } },
-      },
+      select: selectDetail as never,
     });
     if (!a) throw new NotFoundException();
     const staff = role === UserRole.ADMIN || role === UserRole.MODERATOR;
-    if (!staff && a.authorId !== userId) throw new ForbiddenException();
-    return a;
+    const preview = a as { authorId: string };
+    if (!staff && preview.authorId !== userId) throw new ForbiddenException();
+    return normalizeArticleRow(a as Record<string, unknown>, hasMod);
   }
 
-  create(userId: string, dto: CreateArticleDto) {
+  async create(userId: string, dto: CreateArticleDto) {
+    const hasMod = await prismaArticleHasModerationColumn(this.prisma);
+    const published = dto.published ?? true;
+    if (hasMod) {
+      return this.prisma.article.create({
+        data: {
+          authorId: userId,
+          categoryId: dto.categoryId,
+          title: dto.title,
+          excerpt: dto.excerpt,
+          body: dto.body,
+          published,
+          moderationStatus: ArticleModerationStatus.NONE,
+          attachmentUrls: [],
+        },
+        include: { category: true },
+      });
+    }
     return this.prisma.article.create({
       data: {
         authorId: userId,
@@ -136,15 +265,18 @@ export class ArticlesService {
         title: dto.title,
         excerpt: dto.excerpt,
         body: dto.body,
-        published: dto.published ?? true,
-        moderationStatus: ArticleModerationStatus.NONE,
-        attachmentUrls: [],
+        published,
       },
       include: { category: true },
     });
   }
 
   async submitArticle(userId: string, role: UserRole, dto: SubmitArticleDto) {
+    if (!(await prismaArticleHasModerationColumn(this.prisma))) {
+      throw new BadRequestException(
+        'На сервере не применена миграция статей (moderationStatus). Выполните `npx prisma migrate deploy` и перезапустите API.',
+      );
+    }
     if (role !== UserRole.SPECIALIST && role !== UserRole.MODERATOR) {
       throw new ForbiddenException('Публикация статей доступна специалистам.');
     }
@@ -188,6 +320,9 @@ export class ArticlesService {
   }
 
   async patchPendingSubmission(userId: string, articleId: string, dto: PatchSubmitArticleDto) {
+    if (!(await prismaArticleHasModerationColumn(this.prisma))) {
+      throw new BadRequestException('Миграция статей не применена — черновики на модерации недоступны.');
+    }
     const a = await this.prisma.article.findFirst({
       where: { id: articleId, authorId: userId, moderationStatus: ArticleModerationStatus.PENDING },
     });
@@ -227,19 +362,46 @@ export class ArticlesService {
   }
 
   async mySubmissions(userId: string, status?: 'pending' | 'all') {
+    const hasMod = await prismaArticleHasModerationColumn(this.prisma);
     const where =
-      status === 'pending'
+      status === 'pending' && hasMod
         ? { authorId: userId, moderationStatus: ArticleModerationStatus.PENDING }
         : { authorId: userId };
-    return this.prisma.article.findMany({
-      where,
+    const selectRows = hasMod
+      ? ({
+          id: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          moderationStatus: true,
+          attachmentUrls: true,
+          categoryId: true,
+          authorId: true,
+          category: true,
+          author: { select: { id: true, email: true, profile: true } },
+        } as const)
+      : ({
+          id: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          categoryId: true,
+          authorId: true,
+          category: true,
+          author: { select: { id: true, email: true, profile: true } },
+        } as const);
+
+    const rows = await this.prisma.article.findMany({
+      where: where as never,
       orderBy: { createdAt: 'desc' },
       take: 50,
-      include: {
-        category: true,
-        author: { select: { id: true, email: true, profile: true } },
-      },
+      select: selectRows as never,
     });
+    return rows.map((row) => normalizeArticleRow(row as Record<string, unknown>, hasMod));
   }
 
   private async notifyAdminsArticlePending(articleId: string, title: string, actorUserId: string) {
@@ -292,26 +454,61 @@ export class ArticlesService {
   }
 
   async commentsForArticle(articleId: string) {
+    const pub = await this.publishedArticleWhere();
     const article = await this.prisma.article.findFirst({
-      where: { id: articleId, ...publishedArticleWhere() },
+      where: { id: articleId, ...(pub as object) } as never,
       select: { id: true },
     });
     if (!article) throw new NotFoundException();
-    const rows = await this.prisma.articleComment.findMany({
-      where: { articleId },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        author: { select: { id: true, email: true, profile: true } },
-      },
-    });
 
-    const modMap = await this.moderation.publicSummaryForUsers(rows.map((c) => c.authorId));
-    return rows.map((c) => this.serializeCommentRow(c, modMap));
+    const hasCom = await prismaArticleCommentHasAttachmentColumn(this.prisma);
+    const rows = hasCom
+      ? await this.prisma.articleComment.findMany({
+          where: { articleId },
+          orderBy: { createdAt: 'asc' },
+          include: {
+            author: { select: { id: true, email: true, profile: true } },
+          },
+        })
+      : await this.prisma.articleComment.findMany({
+          where: { articleId },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            articleId: true,
+            authorId: true,
+            body: true,
+            createdAt: true,
+            author: { select: { id: true, email: true, profile: true } },
+          },
+        });
+
+    const modMap = await this.moderation.publicSummaryForUsers(rows.map((c) => (c as { authorId: string }).authorId));
+
+    return rows.map((c) => {
+      const base = c as {
+        id: string;
+        articleId: string;
+        authorId: string;
+        body: string;
+        createdAt: Date;
+        attachmentUrls?: string[];
+        updatedAt?: Date;
+        author: { id: string; email: string; profile: unknown };
+      };
+      const normalized = {
+        ...base,
+        attachmentUrls: base.attachmentUrls ?? [],
+        updatedAt: base.updatedAt ?? base.createdAt,
+      };
+      return this.serializeCommentRow(normalized, modMap);
+    });
   }
 
   async addComment(articleId: string, userId: string, dto: CreateArticleCommentDto) {
+    const pub = await this.publishedArticleWhere();
     const article = await this.prisma.article.findFirst({
-      where: { id: articleId, ...publishedArticleWhere() },
+      where: { id: articleId, ...(pub as object) } as never,
       select: { id: true, authorId: true, title: true },
     });
     if (!article) throw new NotFoundException();
@@ -334,18 +531,27 @@ export class ArticlesService {
     if (!text && urls.length === 0) {
       throw new BadRequestException('Введите текст комментария или прикрепите файл');
     }
-    const bodyStored = text;
-    const approxLen = bodyStored.length + urls.join('\n').length;
-    if (approxLen > 12000) {
+
+    const hasCom = await prismaArticleCommentHasAttachmentColumn(this.prisma);
+    const bodyLegacy =
+      urls.length === 0 ? text : text ? `${text}\n\n${urls.join('\n')}` : urls.join('\n');
+    if (bodyLegacy.length > 12000) {
       throw new BadRequestException('Комментарий с вложениями слишком длинный');
     }
 
-    const created = await this.prisma.articleComment.create({
-      data: { articleId, authorId: userId, body: bodyStored, attachmentUrls: urls },
-      include: {
-        author: { select: { id: true, email: true, profile: true } },
-      },
-    });
+    const created = hasCom
+      ? await this.prisma.articleComment.create({
+          data: { articleId, authorId: userId, body: text, attachmentUrls: urls },
+          include: {
+            author: { select: { id: true, email: true, profile: true } },
+          },
+        })
+      : await this.prisma.articleComment.create({
+          data: { articleId, authorId: userId, body: bodyLegacy },
+          include: {
+            author: { select: { id: true, email: true, profile: true } },
+          },
+        });
 
     const modMap = await this.moderation.publicSummaryForUsers([userId]);
 
@@ -381,25 +587,56 @@ export class ArticlesService {
       /* уведомления не критичны */
     }
 
-    return this.serializeCommentRow(created, modMap);
+    const row = hasCom
+      ? created
+      : {
+          ...created,
+          attachmentUrls: [] as string[],
+          updatedAt: created.createdAt,
+        };
+    return this.serializeCommentRow(
+      {
+        id: row.id,
+        articleId: row.articleId,
+        authorId: row.authorId,
+        body: row.body,
+        attachmentUrls: (row as { attachmentUrls?: string[] }).attachmentUrls ?? [],
+        createdAt: row.createdAt,
+        updatedAt: (row as { updatedAt?: Date }).updatedAt ?? row.createdAt,
+        author: row.author as { id: string; email: string; profile: unknown },
+      },
+      modMap,
+    );
   }
 
   async patchComment(commentId: string, userId: string, dto: PatchArticleCommentDto) {
-    const row = await this.prisma.articleComment.findUnique({
-      where: { id: commentId },
-      select: {
-        id: true,
-        articleId: true,
-        authorId: true,
-        body: true,
-        attachmentUrls: true,
-      },
-    });
+    const hasCom = await prismaArticleCommentHasAttachmentColumn(this.prisma);
+    const row = hasCom
+      ? await this.prisma.articleComment.findUnique({
+          where: { id: commentId },
+          select: {
+            id: true,
+            articleId: true,
+            authorId: true,
+            body: true,
+            attachmentUrls: true,
+          },
+        })
+      : await this.prisma.articleComment.findUnique({
+          where: { id: commentId },
+          select: {
+            id: true,
+            articleId: true,
+            authorId: true,
+            body: true,
+          },
+        });
     if (!row) throw new NotFoundException();
     if (row.authorId !== userId) throw new ForbiddenException();
 
+    const pub = await this.publishedArticleWhere();
     const article = await this.prisma.article.findFirst({
-      where: { id: row.articleId, ...publishedArticleWhere() },
+      where: { id: row.articleId, ...(pub as object) } as never,
       select: { id: true },
     });
     if (!article) throw new NotFoundException('Статья недоступна для правки комментария.');
@@ -414,7 +651,10 @@ export class ArticlesService {
 
     const maxFiles = await this.uploadsConfig.messageMaxFilesPerComment();
     const filesEnabled = await this.uploadsConfig.messageAttachmentsEnabled();
-    const cur = splitCommentBodyFromStorage(row.body, row.attachmentUrls ?? []);
+    const cur = splitCommentBodyFromStorage(
+      row.body,
+      hasCom && 'attachmentUrls' in row ? (row.attachmentUrls as string[]) ?? [] : [],
+    );
 
     const rawUrls =
       dto.attachmentUrls !== undefined
@@ -430,16 +670,50 @@ export class ArticlesService {
       throw new BadRequestException('Комментарий не может быть пустым');
     }
 
-    const updated = await this.prisma.articleComment.update({
-      where: { id: commentId },
-      data: { body: nextText, attachmentUrls: nextUrls },
-      include: {
-        author: { select: { id: true, email: true, profile: true } },
-      },
-    });
+    const bodyLegacy =
+      !hasCom && nextUrls.length > 0
+        ? nextText
+          ? `${nextText}\n\n${nextUrls.join('\n')}`
+          : nextUrls.join('\n')
+        : nextText;
+
+    const updated = hasCom
+      ? await this.prisma.articleComment.update({
+          where: { id: commentId },
+          data: { body: nextText, attachmentUrls: nextUrls },
+          include: {
+            author: { select: { id: true, email: true, profile: true } },
+          },
+        })
+      : await this.prisma.articleComment.update({
+          where: { id: commentId },
+          data: { body: bodyLegacy },
+          include: {
+            author: { select: { id: true, email: true, profile: true } },
+          },
+        });
 
     const modMap = await this.moderation.publicSummaryForUsers([userId]);
-    return this.serializeCommentRow(updated, modMap);
+    const uRow = hasCom
+      ? updated
+      : {
+          ...updated,
+          attachmentUrls: [] as string[],
+          updatedAt: updated.createdAt,
+        };
+    return this.serializeCommentRow(
+      {
+        id: uRow.id,
+        articleId: uRow.articleId,
+        authorId: uRow.authorId,
+        body: uRow.body,
+        attachmentUrls: (uRow as { attachmentUrls?: string[] }).attachmentUrls ?? [],
+        createdAt: uRow.createdAt,
+        updatedAt: (uRow as { updatedAt?: Date }).updatedAt ?? uRow.createdAt,
+        author: uRow.author as { id: string; email: string; profile: unknown },
+      },
+      modMap,
+    );
   }
 
   async deleteComment(commentId: string, userId: string) {
@@ -450,8 +724,9 @@ export class ArticlesService {
     if (!row) throw new NotFoundException();
     if (row.authorId !== userId) throw new ForbiddenException();
 
+    const pub = await this.publishedArticleWhere();
     const article = await this.prisma.article.findFirst({
-      where: { id: row.articleId, ...publishedArticleWhere() },
+      where: { id: row.articleId, ...(pub as object) } as never,
       select: { id: true },
     });
     if (!article) throw new NotFoundException();

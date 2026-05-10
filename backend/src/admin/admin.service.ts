@@ -33,6 +33,7 @@ import { AdminPatchUserDto } from './dto/admin-users.dto';
 import { AdminSetUserVetcoinDto } from './dto/admin-users-vetcoin.dto';
 import { AdminPatchReportDto } from './dto/admin-misc.dto';
 import { ModerationService } from '../moderation/moderation.service';
+import { prismaArticleHasModerationColumn } from '../common/prisma-article-schema';
 import { sanitizeArticleSubmissionAttachmentUrls } from '../uploads/message-attachments.policy';
 import { AuditService } from '../audit/audit.service';
 import { AlertsService } from '../alerts/alerts.service';
@@ -444,10 +445,11 @@ export class AdminService {
   }
 
   async articlesList(q?: string, page = 1, pageSize = 20, moderation?: string) {
+    const hasMod = await prismaArticleHasModerationColumn(this.prisma);
     const { skip, take, page: p, pageSize: ps } = this.paginate(page, pageSize);
     const where: Prisma.ArticleWhereInput = {};
     const m = (moderation ?? '').trim().toUpperCase();
-    if (m && m !== 'ALL' && (Object.values(ArticleModerationStatus) as string[]).includes(m)) {
+    if (hasMod && m && m !== 'ALL' && (Object.values(ArticleModerationStatus) as string[]).includes(m)) {
       where.moderationStatus = m as ArticleModerationStatus;
     }
     if (q && q.trim().length >= 2) {
@@ -457,23 +459,55 @@ export class AdminService {
         { excerpt: { contains: needle, mode: 'insensitive' } },
       ];
     }
+    const selectRows = hasMod
+      ? ({
+          id: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          moderationStatus: true,
+          attachmentUrls: true,
+          createdAt: true,
+          categoryId: true,
+          authorId: true,
+          category: true,
+          author: { select: { id: true, email: true, profile: true } },
+        } as const)
+      : ({
+          id: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          categoryId: true,
+          authorId: true,
+          category: true,
+          author: { select: { id: true, email: true, profile: true } },
+        } as const);
     const [items, total] = await Promise.all([
       this.prisma.article.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip,
         take,
-        include: {
-          category: true,
-          author: { select: { id: true, email: true, profile: true } },
-        },
+        select: selectRows as never,
       }),
       this.prisma.article.count({ where }),
     ]);
-    return { items, total, page: p, pageSize: ps };
+    const itemsNorm = (items as Record<string, unknown>[]).map((row) => ({
+      ...row,
+      moderationStatus: hasMod
+        ? (row.moderationStatus as ArticleModerationStatus)
+        : ArticleModerationStatus.NONE,
+      attachmentUrls: hasMod && Array.isArray(row.attachmentUrls) ? (row.attachmentUrls as string[]) : [],
+    }));
+    return { items: itemsNorm, total, page: p, pageSize: ps };
   }
 
   async createArticle(dto: AdminCreateArticleDto) {
+    const hasMod = await prismaArticleHasModerationColumn(this.prisma);
     const author = await this.prisma.user.findUnique({ where: { id: dto.authorId } });
     if (!author) throw new NotFoundException('Автор не найден');
     const cat = await this.prisma.articleCategory.findUnique({ where: { id: dto.categoryId } });
@@ -481,6 +515,21 @@ export class AdminService {
     const attachmentUrls = sanitizeArticleSubmissionAttachmentUrls(dto.attachmentUrls ?? [], 15);
     const published = dto.published ?? true;
     const moderationStatus = dto.moderationStatus ?? ArticleModerationStatus.NONE;
+    if (hasMod) {
+      return this.prisma.article.create({
+        data: {
+          categoryId: dto.categoryId,
+          title: dto.title,
+          excerpt: dto.excerpt,
+          body: dto.body,
+          published,
+          moderationStatus,
+          attachmentUrls,
+          authorId: dto.authorId,
+        },
+        include: { category: true, author: { select: { id: true, email: true } } },
+      });
+    }
     return this.prisma.article.create({
       data: {
         categoryId: dto.categoryId,
@@ -488,8 +537,6 @@ export class AdminService {
         excerpt: dto.excerpt,
         body: dto.body,
         published,
-        moderationStatus,
-        attachmentUrls,
         authorId: dto.authorId,
       },
       include: { category: true, author: { select: { id: true, email: true } } },
@@ -497,7 +544,22 @@ export class AdminService {
   }
 
   async patchArticle(id: string, dto: AdminPatchArticleDto) {
-    const a = await this.prisma.article.findUnique({ where: { id } });
+    const hasMod = await prismaArticleHasModerationColumn(this.prisma);
+    const a = hasMod
+      ? await this.prisma.article.findUnique({ where: { id } })
+      : await this.prisma.article.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            categoryId: true,
+            authorId: true,
+            title: true,
+            excerpt: true,
+            body: true,
+            published: true,
+            createdAt: true,
+          },
+        });
     if (!a) throw new NotFoundException();
     if (dto.authorId) {
       const u = await this.prisma.user.findUnique({ where: { id: dto.authorId } });
@@ -507,11 +569,14 @@ export class AdminService {
       const c = await this.prisma.articleCategory.findUnique({ where: { id: dto.categoryId } });
       if (!c) throw new NotFoundException('Категория не найдена');
     }
+    const currentMod = hasMod
+      ? (a as unknown as { moderationStatus: ArticleModerationStatus }).moderationStatus
+      : ArticleModerationStatus.NONE;
     let moderationStatus = dto.moderationStatus;
     if (dto.published === true && dto.moderationStatus === undefined) {
       if (
-        a.moderationStatus === ArticleModerationStatus.PENDING ||
-        a.moderationStatus === ArticleModerationStatus.REJECTED
+        currentMod === ArticleModerationStatus.PENDING ||
+        currentMod === ArticleModerationStatus.REJECTED
       ) {
         moderationStatus = ArticleModerationStatus.APPROVED;
       }
@@ -520,22 +585,49 @@ export class AdminService {
       dto.attachmentUrls !== undefined
         ? sanitizeArticleSubmissionAttachmentUrls(dto.attachmentUrls, 15)
         : undefined;
+    const data: Prisma.ArticleUpdateInput = {
+      ...(dto.categoryId ? { categoryId: dto.categoryId } : {}),
+      ...(dto.authorId ? { authorId: dto.authorId } : {}),
+      ...(dto.title !== undefined ? { title: dto.title } : {}),
+      ...(dto.excerpt !== undefined ? { excerpt: dto.excerpt } : {}),
+      ...(dto.body !== undefined ? { body: dto.body } : {}),
+      ...(dto.published !== undefined ? { published: dto.published } : {}),
+    };
+    if (hasMod) {
+      if (moderationStatus !== undefined) Object.assign(data, { moderationStatus });
+      if (attachmentUrls !== undefined) Object.assign(data, { attachmentUrls });
+    }
+    const selectOut = hasMod
+      ? ({
+          id: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          moderationStatus: true,
+          attachmentUrls: true,
+          categoryId: true,
+          authorId: true,
+          category: true,
+          author: { select: { id: true, email: true, profile: true } },
+        } as const)
+      : ({
+          id: true,
+          title: true,
+          excerpt: true,
+          body: true,
+          published: true,
+          createdAt: true,
+          categoryId: true,
+          authorId: true,
+          category: true,
+          author: { select: { id: true, email: true, profile: true } },
+        } as const);
     return this.prisma.article.update({
       where: { id },
-      data: {
-        ...(dto.categoryId ? { categoryId: dto.categoryId } : {}),
-        ...(dto.authorId ? { authorId: dto.authorId } : {}),
-        ...(dto.title !== undefined ? { title: dto.title } : {}),
-        ...(dto.excerpt !== undefined ? { excerpt: dto.excerpt } : {}),
-        ...(dto.body !== undefined ? { body: dto.body } : {}),
-        ...(dto.published !== undefined ? { published: dto.published } : {}),
-        ...(moderationStatus !== undefined ? { moderationStatus } : {}),
-        ...(attachmentUrls !== undefined ? { attachmentUrls } : {}),
-      },
-      include: {
-        category: true,
-        author: { select: { id: true, email: true, profile: true } },
-      },
+      data,
+      select: selectOut as never,
     });
   }
 
