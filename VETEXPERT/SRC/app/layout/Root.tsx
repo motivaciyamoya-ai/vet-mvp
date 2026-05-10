@@ -492,7 +492,28 @@ function RootContent() {
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 text-xs sm:text-sm text-slate-600 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-          <p className="truncate">© {new Date().getFullYear()} VetConnect</p>
+          <div className="flex flex-wrap items-center gap-3 min-w-0">
+            {/* Yandex.Metrika informer */}
+            <a
+              href="https://metrika.yandex.ru/stat/?id=109134838&from=informer"
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              className="shrink-0 leading-none"
+            >
+              <img
+                src="https://informer.yandex.ru/informer/109134838/1_1_FFFFFFFF_EFEFEFFF_0_pageviews"
+                width={80}
+                height={15}
+                style={{ border: 0, width: 80, height: 15, display: 'block' }}
+                alt="Яндекс.Метрика"
+                title="Яндекс.Метрика: данные за сегодня (просмотры)"
+                className="ym-advanced-informer"
+                data-cid="109134838"
+                data-lang="ru"
+              />
+            </a>
+            <p className="truncate">© {new Date().getFullYear()} VetConnect</p>
+          </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <a className="hover:underline" href="/privacy">
               Политика конфиденциальности
