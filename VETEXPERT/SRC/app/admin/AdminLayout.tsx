@@ -19,6 +19,7 @@ import {
   Share2,
   Mail,
   Activity,
+  BookOpen,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -165,6 +166,10 @@ export default function AdminLayout() {
           <NavLink to="/admin/seo" className={linkClass}>
             <Share2 className="w-4 h-4 shrink-0" />
             SEO
+          </NavLink>
+          <NavLink to="/admin/legal" className={linkClass}>
+            <BookOpen className="w-4 h-4 shrink-0" />
+            Политики (HTML)
           </NavLink>
           <NavLink to="/admin/settings" className={linkClass}>
             <Settings2 className="w-4 h-4 shrink-0" />

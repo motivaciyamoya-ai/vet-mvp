@@ -467,6 +467,16 @@ export async function apiReferenceMaintenance(): Promise<PublicMaintenanceDto> {
   return apiFetch<PublicMaintenanceDto>("/api/reference/maintenance");
 }
 
+/** Публичные HTML-тексты политик (`GET /api/reference/legal`). */
+export type PublicLegalPagesDto = {
+  privacyHtml: string | null;
+  cookiesHtml: string | null;
+};
+
+export async function apiReferenceLegal(): Promise<PublicLegalPagesDto> {
+  return apiFetch<PublicLegalPagesDto>("/api/reference/legal");
+}
+
 export async function apiListingsList(pageSize = 100) {
   return apiFetch<{ items: ApiListingSummary[]; total: number }>(
     `/api/listings?page=1&pageSize=${encodeURIComponent(String(pageSize))}`,

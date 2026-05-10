@@ -37,6 +37,7 @@ import AdminSecurity from "./admin/AdminSecurity";
 import AdminAiTools from "./admin/AdminAiTools";
 import AdminServerStats from "./admin/AdminServerStats";
 import AdminMail from "./admin/AdminMail";
+import AdminLegal from "./admin/AdminLegal";
 import UserPublicProfile from "./pages/UserPublicProfile";
 import MessagesPage from "./pages/MessagesPage";
 import ArticleDetail from "./pages/ArticleDetail";
@@ -105,6 +106,7 @@ export const router = createBrowserRouter([
       { path: "push", Component: AdminPush },
       { path: "maintenance", Component: AdminMaintenance },
       { path: "seo", Component: AdminSeo },
+      { path: "legal", Component: AdminLegal },
       { path: "settings", Component: AdminSettings },
       { path: "vetcoins", Component: AdminVetCoins },
       { path: "security", Component: AdminSecurity },

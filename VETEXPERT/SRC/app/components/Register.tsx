@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { User, Mail, Lock, Eye, EyeOff, MapPin, GraduationCap, Briefcase, Building2, Award, Globe, ChevronRight, ChevronLeft, Check, Loader, Cake } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, apiReferenceLegal } from "../../lib/api";
 import PrivacyPolicyRuContent from "./legal/PrivacyPolicyRuContent";
+import LegalHtmlBody from "./legal/LegalHtmlBody";
 
 function toIsoLocalDateOnly(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -88,6 +89,11 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const policyScrollRef = useRef<HTMLDivElement>(null);
   const [policyReadToEnd, setPolicyReadToEnd] = useState(false);
+  /** Текст политики для шага согласия: из API или встроенный шаблон. */
+  const [legalPrivacy, setLegalPrivacy] = useState<{ status: "loading" | "ready"; html: string | null }>({
+    status: "loading",
+    html: null,
+  });
 
   const syncPolicyScrollState = () => {
     const el = policyScrollRef.current;
@@ -104,7 +110,7 @@ export default function Register() {
     syncPolicyScrollState();
     const id = requestAnimationFrame(() => syncPolicyScrollState());
     return () => cancelAnimationFrame(id);
-  }, [formData.policyAccepted]);
+  }, [formData.policyAccepted, legalPrivacy.status]);
 
   useEffect(() => {
     if (formData.policyAccepted) return;
@@ -113,6 +119,21 @@ export default function Register() {
     const ro = new ResizeObserver(() => syncPolicyScrollState());
     ro.observe(el);
     return () => ro.disconnect();
+  }, [formData.policyAccepted, legalPrivacy.status]);
+
+  useEffect(() => {
+    if (formData.policyAccepted) return;
+    let cancelled = false;
+    apiReferenceLegal()
+      .then((r) => {
+        if (!cancelled) setLegalPrivacy({ status: "ready", html: r.privacyHtml });
+      })
+      .catch(() => {
+        if (!cancelled) setLegalPrivacy({ status: "ready", html: null });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [formData.policyAccepted]);
 
   const updateField = (field: string, value: any) => {
@@ -212,10 +233,18 @@ export default function Register() {
             onScroll={syncPolicyScrollState}
             className="max-h-[min(52vh,26rem)] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 scroll-smooth"
           >
-            <PrivacyPolicyRuContent hideTitle className="!space-y-4" />
+            {legalPrivacy.status === "loading" ? (
+              <div className="flex justify-center items-center py-16 text-slate-500">
+                <Loader className="w-8 h-8 animate-spin" aria-hidden />
+              </div>
+            ) : legalPrivacy.html?.trim() ? (
+              <LegalHtmlBody html={legalPrivacy.html} className="!space-y-3" />
+            ) : (
+              <PrivacyPolicyRuContent hideTitle className="!space-y-4" />
+            )}
           </div>
 
-          {!policyReadToEnd && (
+          {!policyReadToEnd && legalPrivacy.status === "ready" && (
             <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               Прокрутите документ выше до конца — после этого станет доступна кнопка «Согласен». Полный текст также
               доступен на странице{" "}
@@ -229,7 +258,7 @@ export default function Register() {
           <div className="flex flex-col sm:flex-row gap-3 pt-1">
             <button
               type="button"
-              disabled={!policyReadToEnd}
+              disabled={legalPrivacy.status !== "ready" || !policyReadToEnd}
               onClick={() => {
                 updateField("policyAccepted", true);
               }}

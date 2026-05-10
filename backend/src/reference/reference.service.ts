@@ -22,6 +22,10 @@ const SEO_FALLBACK_ORIGIN_FOR_ASSETS = 'https://vetconnect.online';
 
 const SEO_DEFAULT_THEME = '#059669';
 
+/** Полный HTML документа (редактируется в админке). Пустое значение = шаблон по умолчанию на клиенте. */
+const LEGAL_PRIVACY_HTML_KEY = 'legal.privacy_html';
+const LEGAL_COOKIES_HTML_KEY = 'legal.cookies_html';
+
 function seoPick(map: Record<string, string>, key: string): string {
   return (map[key] ?? '').trim();
 }
@@ -329,6 +333,21 @@ export class ReferenceService {
       null;
 
     return { enabled, title, message, updatedAt };
+  }
+
+  /** Публичные юридические тексты (HTML из SiteSetting или null для шаблона на фронте). */
+  async getPublicLegal(): Promise<{ privacyHtml: string | null; cookiesHtml: string | null }> {
+    const rows = await this.prisma.siteSetting.findMany({
+      where: { key: { in: [LEGAL_PRIVACY_HTML_KEY, LEGAL_COOKIES_HTML_KEY] } },
+      select: { key: true, value: true },
+    });
+    const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    const privacy = (map[LEGAL_PRIVACY_HTML_KEY] ?? '').trim();
+    const cookies = (map[LEGAL_COOKIES_HTML_KEY] ?? '').trim();
+    return {
+      privacyHtml: privacy.length ? privacy : null,
+      cookiesHtml: cookies.length ? cookies : null,
+    };
   }
 
   /**

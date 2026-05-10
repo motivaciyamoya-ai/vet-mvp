@@ -4,6 +4,7 @@ import { ForumService } from '../forum/forum.service';
 import { ReferenceService } from './reference.service';
 import { SpecialistsListQueryDto } from './dto/specialists-query.dto';
 import { PublicSiteSeoDto } from './dto/public-site-seo.dto';
+import { PublicLegalDto } from './dto/public-legal.dto';
 
 @ApiTags('reference')
 @Controller('reference')
@@ -29,6 +30,13 @@ export class ReferenceController {
   @Get('maintenance')
   maintenance() {
     return this.ref.getPublicMaintenance();
+  }
+
+  /** Политика конфиденциальности и cookies в HTML (ключи `legal.privacy_html`, `legal.cookies_html`). Без авторизации. */
+  @Get('legal')
+  @ApiOkResponse({ type: PublicLegalDto })
+  legal(): Promise<PublicLegalDto> {
+    return this.ref.getPublicLegal();
   }
 
   @Get('job-titles')
