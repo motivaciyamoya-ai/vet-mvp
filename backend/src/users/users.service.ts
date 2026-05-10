@@ -4,8 +4,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { ArticleModerationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { countPublishedArticlesForAuthor } from '../common/article-published-count';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SpendVetcoinsDto, VetcoinClientSpendAction } from './dto/spend-vetcoins.dto';
 import { VetcoinService } from '../vetcoin/vetcoin.service';
@@ -128,13 +128,7 @@ export class UsersService {
         where: { authorId: userId, acceptedAsSolutionIn: { isNot: null } },
       }),
       this.prisma.profileThank.count({ where: { toUserId: userId } }),
-      this.prisma.article.count({
-        where: {
-          authorId: userId,
-          published: true,
-          moderationStatus: { in: [ArticleModerationStatus.NONE, ArticleModerationStatus.APPROVED] },
-        },
-      }),
+      countPublishedArticlesForAuthor(this.prisma, userId),
       this.prisma.articleComment.count({ where: { authorId: userId } }),
       this.prisma.listing.count({ where: { authorId: userId } }),
       this.prisma.listingMessage.count({ where: { senderId: userId } }),
